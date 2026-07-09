@@ -52,7 +52,7 @@ tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter','system-ui',
       <div class="text-right text-xs text-sky-100 leading-relaxed">
         <div>Sumber: <span class="font-semibold">Google Sheet (langsung)</span></div>
         <div>Data guna 2023&ndash;2025 + Jan&ndash;Jun 2026</div>
-        <div>Dijana (snapshot): 09/07/2026 10:27</div>
+        <div>Dijana (snapshot): 09/07/2026 10:46</div>
       </div>
     </div>
 
@@ -685,7 +685,7 @@ function buildFull(){
   FULL=flat; return FULL;
 }
 const FCOLS=[
-  {key:'no',   label:'No',              type:'num',  align:'text-left',   get:d=>parseFloat(d.no)||0,      fmt:d=>esc(d.no)},
+  {key:'no',   label:'#',               type:'index', align:'text-left'},
   {key:'dept', label:'Kepakaran',       type:'text', align:'text-left',   get:d=>shortDept(d.dept),        fmt:d=>`<span class="text-xs text-slate-500">${esc(shortDept(d.dept))}</span>`},
   {key:'drug', label:'Nama Ubat',       type:'text', align:'text-left',   get:d=>d.drug,                   fmt:d=>`<span class="font-medium text-slate-800">${esc(d.drug)}</span>`},
   {key:'cat',  label:'Kat',             type:'text', align:'text-left',   get:d=>d.catKey,                 fmt:d=>catBadge(d)},
@@ -706,10 +706,14 @@ function renderFullTable(){
   });
   if(sortState.dir==='desc') rows.reverse();
   const thead='<thead><tr class="text-[11px] uppercase text-slate-500 border-b border-slate-200">'+
-    FCOLS.map(c=>{const a=sortState.key===c.key; const ar=a?(sortState.dir==='desc'?' &#9660;':' &#9650;'):'';
+    FCOLS.map(c=>{
+      if(c.type==='index') return `<th class="px-2 py-2 ${c.align} font-semibold whitespace-nowrap text-slate-400">${esc(c.label)}</th>`;
+      const a=sortState.key===c.key; const ar=a?(sortState.dir==='desc'?' &#9660;':' &#9650;'):'';
       return `<th data-k="${c.key}" class="px-2 py-2 ${c.align} font-semibold cursor-pointer select-none hover:text-slate-800 whitespace-nowrap ${a?'text-sky-700':''}">${esc(c.label)}${ar}</th>`;}).join('')+'</tr></thead>';
-  const tbody='<tbody>'+rows.map(d=>'<tr class="border-b border-slate-100 hover:bg-slate-50">'+
-    FCOLS.map(c=>`<td class="px-2 py-1.5 ${c.align} ${c.type==='num'?'num':''}">${c.fmt(d)}</td>`).join('')+'</tr>').join('')+'</tbody>';
+  const tbody='<tbody>'+rows.map((d,i)=>'<tr class="border-b border-slate-100 hover:bg-slate-50">'+
+    FCOLS.map(c=> c.type==='index'
+      ? `<td class="px-2 py-1.5 ${c.align} num text-slate-400">${i+1}</td>`
+      : `<td class="px-2 py-1.5 ${c.align} ${c.type==='num'?'num':''}">${c.fmt(d)}</td>`).join('')+'</tr>').join('')+'</tbody>';
   const t=document.getElementById('fullTable'); t.innerHTML=thead+tbody;
   t.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{
     const k=th.dataset.k;
