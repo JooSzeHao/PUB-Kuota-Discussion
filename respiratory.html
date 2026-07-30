@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Semakan Ubat Berkuota (RESPIRATORY) — Google Sheet, Harga vs Guna</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter','system-ui','sans-serif'] } } } };
+</script>
+<style>
+  html{-webkit-text-size-adjust:100%;}
+  body{background:#f1f5f9;
+       font-family:'Inter','Segoe UI',system-ui,sans-serif;
+       -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+       text-rendering:optimizeLegibility;
+       font-feature-settings:'cv11','ss01';
+       letter-spacing:-0.004em;line-height:1.5;color:#1e293b;}
+  h1,h2,.chart-title{letter-spacing:-0.01em;}
+  table{font-variant-numeric:tabular-nums;}
+  .pillar-card{border:1px solid #e2e8f0;border-radius:.6rem;background:#fff;}
+  .chart-title{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:.4rem;color:#334155;}
+  .chart-grid{display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1rem;}
+  @media(min-width:900px){.chart-grid{grid-template-columns:1fr 1fr;}}
+  details>summary{list-style:none;cursor:pointer;}
+  details>summary::-webkit-details-marker{display:none;}
+  .chip{transition:all .12s ease;font-variant-numeric:tabular-nums;}
+  .chip-off{opacity:.45;}
+  tr.drow:hover{background:#f8fafc;}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;}
+  /* SVG chart text: crisp, legible, non-selectable */
+  svg text{font-family:'Inter','Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  .sticky-th{position:sticky;top:0;z-index:5;}
+  mark{background:#fde68a;padding:0 .1em;border-radius:2px;}
+  .tab-btn{color:#475569;transition:all .12s ease;}
+  .tab-btn.tab-active{background:#0f766e;color:#fff;}
+  .yr-slider{width:120px;accent-color:#0f766e;cursor:pointer;vertical-align:middle;}
+  #fullTable thead th{position:sticky;top:0;background:#f8fafc;z-index:3;}
+  /* Print / PDF: hide interactive controls, keep badge/ABC colours, paginate tables cleanly */
+  @media print{
+    body{background:#fff;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .no-print{display:none !important;}
+    .shadow-sm,.shadow-lg{box-shadow:none !important;}
+    tr{page-break-inside:avoid;}
+    thead{display:table-header-group;}
+    #fullTable thead th{position:static;}
+  }
+</style>
+</head>
+<body class="font-sans text-slate-800">
+
+<header class="bg-gradient-to-r from-sky-800 to-teal-700 text-white shadow-lg">
+  <div class="max-w-[1500px] mx-auto px-6 py-6">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight">Dashboard Semakan Ubat Berkuota &mdash; HSIS</h1>
+        <p class="text-sky-100 text-sm mt-1">Unit Farmasi OP/IP 2026 &middot; Disiplin <span class="font-semibold">RESPIRATORY</span> &middot; Alat sokongan perbincangan Jawatankuasa LO / PRIC</p>
+      </div>
+      <div class="text-right text-xs text-sky-100 leading-relaxed">
+        <div>Sumber: <span class="font-semibold">Google Sheet (langsung)</span></div>
+        <div>Data guna 2023&ndash;2025 + Jan&ndash;Jun 2026</div>
+        <div>Dijana (snapshot): 31/07/2026 00:15</div>
+        <div class="no-print mt-2 flex gap-2 justify-end">
+          <a href="index.html" class="text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 font-semibold text-white">&larr; Semua disiplin</a>
+          <button onclick="window.print()" class="text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 font-semibold text-white">&#128424;&#65039; Cetak / PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3-pillar legend -->
+    <div class="grid md:grid-cols-3 gap-3 mt-5">
+      <div class="bg-white/10 rounded-lg px-4 py-3">
+        <div class="text-xs uppercase tracking-wide text-sky-200 font-semibold">Kriteria Penilaian 1 &middot; Volume</div>
+        <div class="text-sm mt-0.5">Corak penggunaan 3 tahun + trend Jan&ndash;Jun 2026 (% naik/turun).</div>
+      </div>
+      <div class="bg-white/10 rounded-lg px-4 py-3">
+        <div class="text-xs uppercase tracking-wide text-sky-200 font-semibold">Kriteria Penilaian 2 &middot; Kos</div>
+        <div class="text-sm mt-0.5">Harga seunit setiap tahun &amp; status <span class="font-semibold">APPL / NON-APPL</span>.</div>
+      </div>
+      <div class="bg-white/10 rounded-lg px-4 py-3">
+        <div class="text-xs uppercase tracking-wide text-sky-200 font-semibold">Kriteria Penilaian 3 &middot; Tadbir Urus</div>
+        <div class="text-sm mt-0.5">Kategori FUKKM, disiplin lain, justifikasi LO &amp; catatan.</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Stat cards -->
+<div class="max-w-[1500px] mx-auto px-6 mt-6">
+  <div id="statCards" class="grid grid-cols-2 md:grid-cols-6 gap-3"></div>
+</div>
+
+<!-- View tabs -->
+<div class="no-print max-w-[1500px] mx-auto px-6 mt-6">
+  <div class="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm gap-1">
+    <button id="tab-dept" class="tab-btn px-4 py-2 text-sm font-semibold rounded-md">Paparan Kepakaran</button>
+    <button id="tab-table" class="tab-btn px-4 py-2 text-sm font-semibold rounded-md">Jadual Penuh (ABC)</button>
+  </div>
+</div>
+
+<div id="view-dept">
+<!-- Controls -->
+<div class="no-print max-w-[1500px] mx-auto px-6 mt-6">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+    <div class="flex flex-col lg:flex-row lg:items-center gap-3">
+      <div class="flex-1">
+        <input id="search" type="search" placeholder="Cari nama ubat, PIC, justifikasi, catatan..."
+          class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none">
+      </div>
+      <div class="flex items-center gap-2 text-sm">
+        <label class="text-slate-500">Kepakaran:</label>
+        <select id="deptFilter" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none"></select>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="collapseAll" class="text-sm px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200">Tutup semua</button>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-4 mt-4">
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs font-semibold text-slate-500 mr-1">KATEGORI:</span>
+        <div id="catChips" class="flex flex-wrap gap-1.5"></div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs font-semibold text-slate-500 mr-1">SUMBER:</span>
+        <div id="statusChips" class="flex flex-wrap gap-1.5"></div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs font-semibold text-slate-500 mr-1">APPL:</span>
+        <div id="applChips" class="flex flex-wrap gap-1.5"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main id="content" class="max-w-[1500px] mx-auto px-6 py-6 space-y-8"></main>
+</div><!-- /view-dept -->
+
+<div id="view-table" class="hidden max-w-[1500px] mx-auto px-6 py-6">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="px-5 py-3 bg-slate-800 text-white flex items-center justify-between gap-4">
+      <div>
+        <h2 class="font-semibold tracking-tight">Jadual Penuh Semua Ubat &middot; Analisis ABC</h2>
+        <div class="text-[11px] text-slate-300 font-normal">Klik tajuk lajur untuk isih. Guna slider untuk pilih julat tahun kos. Kelas ABC: A &le;70% kos terkumpul, B &le;90%, C selebihnya.</div>
+      </div>
+      <span class="text-xs text-slate-300 whitespace-nowrap" id="fullTableCount"></span>
+    </div>
+    <div class="no-print px-5 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+      <span class="font-semibold text-slate-600">Julat tahun kos:</span>
+      <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-9">Dari</span><input id="yrFrom" type="range" min="0" max="3" step="1" value="2" class="yr-slider"></div>
+      <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-9">Hingga</span><input id="yrTo" type="range" min="0" max="3" step="1" value="2" class="yr-slider"></div>
+      <span id="yrReadout" class="font-bold text-teal-700"></span>
+      <span class="text-[11px] text-slate-400">Pilihan: 2023 &middot; 2024 &middot; 2025 &middot; Jan&ndash;Jun 2026</span>
+      <button id="exportCsv" class="ml-auto text-xs px-3 py-1.5 rounded-lg bg-teal-700 text-white hover:bg-teal-800 font-semibold whitespace-nowrap">&#11015;&#65039; Eksport CSV</button>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-sm" id="fullTable"></table>
+    </div>
+  </div>
+</div>
+
+<footer class="no-print max-w-[1500px] mx-auto px-6 pb-10 text-xs text-slate-400">
+  Dijana secara automatik daripada hamparan sumber. Semua nilai dipapar seperti dalam fail asal (lossless).
+  Sel yang bertanda &#9888; menunjukkan isu kualiti data untuk pengesahan semula oleh jawatankuasa.
+</footer>
+
+<script>
+const DEPARTMENTS = [{"name": "PUB RESPIRATORY (OP)", "drugs": [{"no": "1", "status": "KPK(STOK) -> PUB-OP", "pic": "JOO SZE HAO", "drug": "Apixaban 5mg Tablet", "cat": "A*", "catKey": "A*", "quota": "12/20", "usage": {"y2023": 57121.0, "y2024": 122212.0, "y2025": 255124.0, "h2026": 333468.0, "total": 767925.0, "raw2023": "57121", "raw2024": "122212", "raw2025": "255124", "raw2026": "333468", "rawtotal": "767925"}, "trend": {"t2324": {"pct": 114.0}, "t2425": {"pct": 108.8}, "t2526": {"pct": 161.4}}, "price": {"p2023": 3.27, "p2024": 3.27, "p2025": 0.75, "p2026": 3.32, "raw2023": "3.27", "raw2024": "3.27", "raw2025": "0.75", "raw2026": "3.32"}, "cost": {"c2023": 186785.67, "c2024": 399633.24, "c2025": 191343.0, "c2026h1": 1107113.76, "total": 1884875.67, "rawtotal": "1884875.67"}, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "Cardio (OPEN)\nMedical (80 pt)\nNephro (20 pt)", "justLo": "-Cheapest option of DOAC and applicable for most population (renal impairment, enteral feeding, obese and cancer related)(ASH VTE Guideline). -Respi usually used for 3 to 6 months for a patient. -Other dept (medical & cardio) apply open quota (quota monitoring will be tedious).", "remark": "Hasil cadangan meeting 10/7 (MEDICAL): \n-to open quota Medical\n-untuk pesakit renal CrCl <30/ elderly>65yo/ ESRF/Low BW/ liver disease/cirrhosis"}, "flags": [], "raw": {"no": "1", "status": "KPK(STOK) -> PUB-OP", "pic": "JOO SZE HAO", "drug": "Apixaban 5mg Tablet", "cat": "A*", "quota": "12/20", "u2023": "57121", "u2024": "122212", "t2324": "114.0%", "u2025": "255124", "t2425": "108.76%", "u2026h1": "333468", "t2526": "161.42%", "usage_total": "767925", "p2023": "3.27", "c2023": "186785.67", "p2024": "3.27", "c2024": "399633.24", "p2025": "0.75", "c2025": "191343", "p2026": "3.32", "c2026h1": "1107113.76", "cost_total": "1884875.67", "appl": "1", "nonappl": "", "other_disc": "Cardio (OPEN)\nMedical (80 pt)\nNephro (20 pt)", "just_lo": "-Cheapest option of DOAC and applicable for most population (renal impairment, enteral feeding, obese and cancer related)(ASH VTE Guideline). -Respi usually used for 3 to 6 months for a patient. -Other dept (medical & cardio) apply open quota (quota monitoring will be tedious).", "remark": "Hasil cadangan meeting 10/7 (MEDICAL): \n-to open quota Medical\n-untuk pesakit renal CrCl <30/ elderly>65yo/ ESRF/Low BW/ liver disease/cirrhosis"}}, {"no": "2", "status": "PUB-OP", "pic": "VINOSHINI", "drug": "Beclomethasone 100mcg + Formoterol 6mcg\n(FOSTER)", "cat": "A/KK", "catKey": "A/KK", "quota": "279/450", "usage": {"y2023": 1684.0, "y2024": 2196.0, "y2025": 3489.0, "h2026": 1773.0, "total": 9142.0, "raw2023": "1684", "raw2024": "2196", "raw2025": "3489", "raw2026": "1773", "rawtotal": "9142"}, "trend": {"t2324": {"pct": 30.4}, "t2425": {"pct": 58.9}, "t2526": {"pct": 1.6}}, "price": {"p2023": 66.5, "p2024": 66.45, "p2025": 66.45, "p2026": 66.45, "raw2023": "66.5", "raw2024": "66.45", "raw2025": "66.45", "raw2026": "66.45"}, "cost": {"c2023": 111986.0, "c2024": 145924.2, "c2025": 231844.05, "c2026h1": 117815.85, "total": 607570.1, "rawtotal": "607570.1"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "2", "status": "PUB-OP", "pic": "VINOSHINI", "drug": "Beclomethasone 100mcg + Formoterol 6mcg\n(FOSTER)", "cat": "A/KK", "quota": "279/450", "u2023": "1684", "u2024": "2196", "t2324": "30.4%", "u2025": "3489", "t2425": "58.88%", "u2026h1": "1773", "t2526": "1.63%", "usage_total": "9142", "p2023": "66.5", "c2023": "111986", "p2024": "66.45", "c2024": "145924.2", "p2025": "66.45", "c2025": "231844.05", "p2026": "66.45", "c2026h1": "117815.85", "cost_total": "607570.1", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "3", "status": "PUB-OP", "pic": "JOO SZE HAO", "drug": "Bumetanide 1mg Tablet", "cat": "A*", "catKey": "A*", "quota": "15/5", "usage": {"y2023": 52383.0, "y2024": 64127.0, "y2025": 70777.0, "h2026": 26642.0, "total": 213929.0, "raw2023": "52383", "raw2024": "64127", "raw2025": "70777", "raw2026": "26642", "rawtotal": "213929"}, "trend": {"t2324": {"pct": 22.4}, "t2425": {"pct": 10.4}, "t2526": {"pct": -24.7}}, "price": {"p2023": 0.86, "p2024": 0.86, "p2025": 0.86, "p2026": 0.86, "raw2023": "0.86", "raw2024": "0.86", "raw2025": "0.86", "raw2026": "0.86"}, "cost": {"c2023": 45049.38, "c2024": 55149.22, "c2025": 60868.22, "c2026h1": 22912.12, "total": 183978.94, "rawtotal": "183978.94"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "Not quota med for Nephro and cardio patient.", "remark": ""}, "flags": [], "raw": {"no": "3", "status": "PUB-OP", "pic": "JOO SZE HAO", "drug": "Bumetanide 1mg Tablet", "cat": "A*", "quota": "15/5", "u2023": "52383", "u2024": "64127", "t2324": "22.4%", "u2025": "70777", "t2425": "10.37%", "u2026h1": "26642", "t2526": "-24.72%", "usage_total": "213929", "p2023": "0.86", "c2023": "45049.38", "p2024": "0.86", "c2024": "55149.22", "p2025": "0.86", "c2025": "60868.22", "p2026": "0.86", "c2026h1": "22912.12", "cost_total": "183978.94", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "Not quota med for Nephro and cardio patient.", "remark": ""}}, {"no": "4", "status": "PUB-OP", "pic": "AIN J.", "drug": "Bosentan 125mg Tablet", "cat": "A*", "catKey": "A*", "quota": "35/35", "usage": {"y2023": 12316.0, "y2024": 22811.0, "y2025": 48617.0, "h2026": 36844.0, "total": 120588.0, "raw2023": "12316", "raw2024": "22811", "raw2025": "48617", "raw2026": "36844", "rawtotal": "120588"}, "trend": {"t2324": {"pct": 85.2}, "t2425": {"pct": 113.1}, "t2526": {"pct": 51.6}}, "price": {"p2023": 53.3, "p2024": 53.3, "p2025": 28.8, "p2026": 28.8, "raw2023": "53.3", "raw2024": "53.3", "raw2025": "28.8", "raw2026": "28.8"}, "cost": {"c2023": 656442.8, "c2024": 1215826.3, "c2025": 1400169.6, "c2026h1": 1061107.2, "total": 4333545.9, "rawtotal": "4333545.9"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Cardiology (75 pt)\r\nPulmonology (35 pt)\r\nPaediatric Cardiology (55 pt)", "justLo": "First line for Pulmonary arterial hypertension (PAH) patient (ACS guideline 2022) and cheaper option than macitentan. All PAH patients referred to HSIS must started this med group (ERA)", "remark": ""}, "flags": [], "raw": {"no": "4", "status": "PUB-OP", "pic": "AIN J.", "drug": "Bosentan 125mg Tablet", "cat": "A*", "quota": "35/35", "u2023": "12316", "u2024": "22811", "t2324": "85.2%", "u2025": "48617", "t2425": "113.13%", "u2026h1": "36844", "t2526": "51.57%", "usage_total": "120588", "p2023": "53.3", "c2023": "656442.8", "p2024": "53.3", "c2024": "1215826.3", "p2025": "28.8", "c2025": "1400169.6", "p2026": "28.8", "c2026h1": "1061107.2", "cost_total": "4333545.9", "appl": "", "nonappl": "1", "other_disc": "Cardiology (75 pt)\r\nPulmonology (35 pt)\r\nPaediatric Cardiology (55 pt)", "just_lo": "First line for Pulmonary arterial hypertension (PAH) patient (ACS guideline 2022) and cheaper option than macitentan. All PAH patients referred to HSIS must started this med group (ERA)", "remark": ""}}, {"no": "5", "status": "OPEN PUB-OP", "pic": "JEAN", "drug": "Budesonide 160mcg + Formoterol 4.5mcg Inhalation\n(SYMBICORT)", "cat": "A/KK", "catKey": "A/KK", "quota": "401/800", "usage": {"y2023": 2538.0, "y2024": 2658.0, "y2025": 3410.0, "h2026": 1744.0, "total": 10350.0, "raw2023": "2538", "raw2024": "2658", "raw2025": "3410", "raw2026": "1744", "rawtotal": "10350"}, "trend": {"t2324": {"pct": 4.7}, "t2425": {"pct": 28.3}, "t2526": {"pct": 2.3}}, "price": {"p2023": 70.62, "p2024": 77.9, "p2025": 49.6, "p2026": 49.6, "raw2023": "70.62", "raw2024": "77.9", "raw2025": "49.6", "raw2026": "49.6"}, "cost": {"c2023": 179233.56, "c2024": 207058.2, "c2025": 169136.0, "c2026h1": 86502.4, "total": 641930.16, "rawtotal": "641930.16"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Paediatric (30 pt)", "justLo": "Already open quota for Respi (cap 800 pts). Suggest to monitor by unit instead of by patient.", "remark": ""}, "flags": [], "raw": {"no": "5", "status": "OPEN PUB-OP", "pic": "JEAN", "drug": "Budesonide 160mcg + Formoterol 4.5mcg Inhalation\n(SYMBICORT)", "cat": "A/KK", "quota": "401/800", "u2023": "2538", "u2024": "2658", "t2324": "4.7%", "u2025": "3410", "t2425": "28.29%", "u2026h1": "1744", "t2526": "2.29%", "usage_total": "10350", "p2023": "70.62", "c2023": "179233.56", "p2024": "77.9", "c2024": "207058.2", "p2025": "49.6", "c2025": "169136", "p2026": "49.6", "c2026h1": "86502.4", "cost_total": "641930.16", "appl": "", "nonappl": "1", "other_disc": "Paediatric (30 pt)", "just_lo": "Already open quota for Respi (cap 800 pts). Suggest to monitor by unit instead of by patient.", "remark": ""}}, {"no": "6", "status": "PUB-OP", "pic": "UMIE", "drug": "Ciclesonide 160mcg Inhalation", "cat": "A*", "catKey": "A*", "quota": "1/5", "usage": {"y2023": 75.0, "y2024": 72.0, "y2025": 66.0, "h2026": 18.0, "total": 231.0, "raw2023": "75", "raw2024": "72", "raw2025": "66", "raw2026": "18", "rawtotal": "231"}, "trend": {"t2324": {"pct": -4.0}, "t2425": {"pct": -8.3}, "t2526": {"pct": -45.5}}, "price": {"p2023": 68.9, "p2024": 68.9, "p2025": 68.51, "p2026": 68.9, "raw2023": "68.9", "raw2024": "68.9", "raw2025": "68.51", "raw2026": "68.9"}, "cost": {"c2023": 5167.5, "c2024": 4960.8, "c2025": 4521.66, "c2026h1": 1240.2, "total": 15890.16, "rawtotal": "15890.16"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Paediatric (40 pt)", "justLo": "FUKKM rstriction for peads only.", "remark": ""}, "flags": [], "raw": {"no": "6", "status": "PUB-OP", "pic": "UMIE", "drug": "Ciclesonide 160mcg Inhalation", "cat": "A*", "quota": "1/5", "u2023": "75", "u2024": "72", "t2324": "-4.0%", "u2025": "66", "t2425": "-8.33%", "u2026h1": "18", "t2526": "-45.45%", "usage_total": "231", "p2023": "68.9", "c2023": "5167.5", "p2024": "68.9", "c2024": "4960.8", "p2025": "68.51", "c2025": "4521.66", "p2026": "68.9", "c2026h1": "1240.2", "cost_total": "15890.16", "appl": "", "nonappl": "1", "other_disc": "Paediatric (40 pt)", "just_lo": "FUKKM rstriction for peads only.", "remark": ""}}, {"no": "7", "status": "PUB-OP", "pic": "FATIN L.", "drug": "Cyclosporin 25mg Tablet", "cat": "A*", "catKey": "A*", "quota": "0/2", "usage": {"y2023": 57971.0, "y2024": 71688.0, "y2025": 70810.0, "h2026": 29203.0, "total": 229672.0, "raw2023": "57971", "raw2024": "71688", "raw2025": "70810", "raw2026": "29203", "rawtotal": "229672"}, "trend": {"t2324": {"pct": 23.7}, "t2425": {"pct": -1.2}, "t2526": {"pct": -17.5}}, "price": {"p2023": 3.738, "p2024": 3.471, "p2025": 3.471, "p2026": 3.471, "raw2023": "3.738", "raw2024": "3.471", "raw2025": "3.471", "raw2026": "3.471"}, "cost": {"c2023": 216695.598, "c2024": 248829.048, "c2025": 245781.51, "c2026h1": 101363.613, "total": 812669.769, "rawtotal": "812669.769"}, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "Derm (8 pt)\nMedical (Hemato) (2 pt)\nMedical (Rheumato) (30pt)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "7", "status": "PUB-OP", "pic": "FATIN L.", "drug": "Cyclosporin 25mg Tablet", "cat": "A*", "quota": "0/2", "u2023": "57971", "u2024": "71688", "t2324": "23.7%", "u2025": "70810", "t2425": "-1.22%", "u2026h1": "29203", "t2526": "-17.52%", "usage_total": "229672", "p2023": "3.738", "c2023": "216695.598", "p2024": "3.471", "c2024": "248829.048", "p2025": "3.471", "c2025": "245781.51", "p2026": "3.471", "c2026h1": "101363.613", "cost_total": "812669.769", "appl": "1", "nonappl": "", "other_disc": "Derm (8 pt)\nMedical (Hemato) (2 pt)\nMedical (Rheumato) (30pt)", "just_lo": "", "remark": ""}}, {"no": "8", "status": "PUB-OP", "pic": "DARWISYAH", "drug": "Dabigatran 150mg Capsule", "cat": "A*", "catKey": "A*", "quota": "8/10", "usage": {"y2023": 153711.0, "y2024": 210540.0, "y2025": 361362.0, "h2026": 188318.0, "total": 913931.0, "raw2023": "153711", "raw2024": "210540", "raw2025": "361362", "raw2026": "188318", "rawtotal": "913931"}, "trend": {"t2324": {"pct": 37.0}, "t2425": {"pct": 71.6}, "t2526": {"pct": 4.2}}, "price": {"p2023": 3.42, "p2024": 3.726, "p2025": 3.726, "p2026": 3.726, "raw2023": "3.42", "raw2024": "3.726", "raw2025": "3.726", "raw2026": "3.726"}, "cost": {"c2023": 525691.62, "c2024": 784472.04, "c2025": 1346434.812, "c2026h1": 701672.868, "total": 3358271.34, "rawtotal": "3358271.34"}, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "Cardiology (600 pt)\nOrtho (10 pt)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "8", "status": "PUB-OP", "pic": "DARWISYAH", "drug": "Dabigatran 150mg Capsule", "cat": "A*", "quota": "8/10", "u2023": "153711", "u2024": "210540", "t2324": "37.0%", "u2025": "361362", "t2425": "71.64%", "u2026h1": "188318", "t2526": "4.23%", "usage_total": "913931", "p2023": "3.42", "c2023": "525691.62", "p2024": "3.726", "c2024": "784472.04", "p2025": "3.726", "c2025": "1346434.812", "p2026": "3.726", "c2026h1": "701672.868", "cost_total": "3358271.34", "appl": "1", "nonappl": "", "other_disc": "Cardiology (600 pt)\nOrtho (10 pt)", "just_lo": "", "remark": ""}}, {"no": "9", "status": "PUB-OP", "pic": "ALIYA N.", "drug": "Glycopyrronium 50mcg Inhalation Powder\n(SEEBRI BREEZHALER)", "cat": "A/KK", "catKey": "A/KK", "quota": "57/70", "usage": {"y2023": 260.0, "y2024": 156.0, "y2025": 235.0, "h2026": 177.0, "total": 828.0, "raw2023": "260", "raw2024": "156", "raw2025": "235", "raw2026": "177", "rawtotal": "828"}, "trend": {"t2324": {"pct": -40.0}, "t2425": {"pct": 50.6}, "t2526": {"pct": 50.6}}, "price": {"p2023": 80.6, "p2024": 80.6, "p2025": 90.6, "p2026": 90.6, "raw2023": "80.6", "raw2024": "80.6", "raw2025": "90.6", "raw2026": "90.6"}, "cost": {"c2023": 20956.0, "c2024": 12573.6, "c2025": 21291.0, "c2026h1": 16036.2, "total": 70856.8, "rawtotal": "70856.8"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "9", "status": "PUB-OP", "pic": "ALIYA N.", "drug": "Glycopyrronium 50mcg Inhalation Powder\n(SEEBRI BREEZHALER)", "cat": "A/KK", "quota": "57/70", "u2023": "260", "u2024": "156", "t2324": "-40.0%", "u2025": "235", "t2425": "50.64%", "u2026h1": "177", "t2526": "50.64%", "usage_total": "828", "p2023": "80.6", "c2023": "20956", "p2024": "80.6", "c2024": "12573.6", "p2025": "90.6", "c2025": "21291", "p2026": "90.6", "c2026h1": "16036.2", "cost_total": "70856.8", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "10", "status": "PUB-OP", "pic": "KAVILLASHINI", "drug": "Indacaterol 150mcg + Glycopyrronium + Mometasone 160mcg\n(ENERZAIR BREEZHALER)", "cat": "A", "catKey": "A", "quota": "43/70", "usage": {"y2023": 46.0, "y2024": 146.0, "y2025": 317.0, "h2026": 169.0, "total": 678.0, "raw2023": "46", "raw2024": "146", "raw2025": "317", "raw2026": "169", "rawtotal": "678"}, "trend": {"t2324": {"pct": 217.4}, "t2425": {"pct": 117.1}, "t2526": {"pct": 6.6}}, "price": {"p2023": 161.76, "p2024": 105.8, "p2025": 105.8, "p2026": 105.74, "raw2023": "161.76", "raw2024": "105.8", "raw2025": "105.8", "raw2026": "105.74"}, "cost": {"c2023": 7440.96, "c2024": 15446.8, "c2025": 33538.6, "c2026h1": 17870.06, "total": 74296.42, "rawtotal": "74296.42"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "10", "status": "PUB-OP", "pic": "KAVILLASHINI", "drug": "Indacaterol 150mcg + Glycopyrronium + Mometasone 160mcg\n(ENERZAIR BREEZHALER)", "cat": "A", "quota": "43/70", "u2023": "46", "u2024": "146", "t2324": "217.4%", "u2025": "317", "t2425": "117.12%", "u2026h1": "169", "t2526": "6.62%", "usage_total": "678", "p2023": "161.76", "c2023": "7440.96", "p2024": "105.8", "c2024": "15446.8", "p2025": "105.8", "c2025": "33538.6", "p2026": "105.74", "c2026h1": "17870.06", "cost_total": "74296.42", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "11", "status": "PUB-OP", "pic": "JOO SZE HAO", "drug": "Indacaterol 110mcg + Glycopyrronium Inhalation\n(ULTIBRO BREEZHALER)", "cat": "A/KK", "catKey": "A/KK", "quota": "114/175", "usage": {"y2023": 632.0, "y2024": 754.0, "y2025": 860.0, "h2026": 478.0, "total": 2724.0, "raw2023": "632", "raw2024": "754", "raw2025": "860", "raw2026": "478", "rawtotal": "2724"}, "trend": {"t2324": {"pct": 19.3}, "t2425": {"pct": 14.1}, "t2526": {"pct": 11.2}}, "price": {"p2023": 80.52, "p2024": 81.77, "p2025": 81.77, "p2026": 81.77, "raw2023": "80.52", "raw2024": "81.77", "raw2025": "81.77", "raw2026": "81.77"}, "cost": {"c2023": 50888.64, "c2024": 61654.58, "c2025": 70322.2, "c2026h1": 39086.06, "total": 221951.48, "rawtotal": "221951.48"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "11", "status": "PUB-OP", "pic": "JOO SZE HAO", "drug": "Indacaterol 110mcg + Glycopyrronium Inhalation\n(ULTIBRO BREEZHALER)", "cat": "A/KK", "quota": "114/175", "u2023": "632", "u2024": "754", "t2324": "19.3%", "u2025": "860", "t2425": "14.06%", "u2026h1": "478", "t2526": "11.16%", "usage_total": "2724", "p2023": "80.52", "c2023": "50888.64", "p2024": "81.77", "c2024": "61654.58", "p2025": "81.77", "c2025": "70322.2", "p2026": "81.77", "c2026h1": "39086.06", "cost_total": "221951.48", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "12", "status": "PUB-OP", "pic": "AMTA", "drug": "Indacaterol 150mcg Inhalation\n(ONBREZ BREEZHALER)", "cat": "A/KK", "catKey": "A/KK", "quota": "1/2", "usage": {"y2023": 15.0, "y2024": 7.0, "y2025": 13.0, "h2026": 2.0, "total": 37.0, "raw2023": "15", "raw2024": "7", "raw2025": "13", "raw2026": "2", "rawtotal": "37"}, "trend": {"t2324": {"pct": -53.3}, "t2425": {"pct": 85.7}, "t2526": {"pct": -69.2}}, "price": {"p2023": 44.44, "p2024": 44.44, "p2025": 80.8, "p2026": 80.72, "raw2023": "44.44", "raw2024": "44.44", "raw2025": "80.8", "raw2026": "80.72"}, "cost": {"c2023": 666.6, "c2024": 311.08, "c2025": 1050.4, "c2026h1": 161.44, "total": 2189.52, "rawtotal": "2189.52"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": "Only left one active pt, not intended to have new pt in future"}, "flags": [], "raw": {"no": "12", "status": "PUB-OP", "pic": "AMTA", "drug": "Indacaterol 150mcg Inhalation\n(ONBREZ BREEZHALER)", "cat": "A/KK", "quota": "1/2", "u2023": "15", "u2024": "7", "t2324": "-53.3%", "u2025": "13", "t2425": "85.71%", "u2026h1": "2", "t2526": "-69.23%", "usage_total": "37", "p2023": "44.44", "c2023": "666.6", "p2024": "44.44", "c2024": "311.08", "p2025": "80.8", "c2025": "1050.4", "p2026": "80.72", "c2026h1": "161.44", "cost_total": "2189.52", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "Only left one active pt, not intended to have new pt in future"}}, {"no": "13", "status": "PUB-OP", "pic": "JOO SZE HAO", "drug": "Macitentan 10mg Tablet", "cat": "A*", "catKey": "A*", "quota": "23/30", "usage": {"y2023": 2526.0, "y2024": 4301.0, "y2025": 8288.0, "h2026": 10811.0, "total": 25926.0, "raw2023": "2526", "raw2024": "4301", "raw2025": "8288", "raw2026": "10811", "rawtotal": "25926"}, "trend": {"t2324": {"pct": 70.3}, "t2425": {"pct": 92.7}, "t2526": {"pct": 160.9}}, "price": {"p2023": 280.67, "p2024": 116.78, "p2025": 116.78, "p2026": 94.34, "raw2023": "280.67", "raw2024": "116.78", "raw2025": "116.78", "raw2026": "94.34"}, "cost": {"c2023": 708972.42, "c2024": 502270.78, "c2025": 967872.64, "c2026h1": 1019909.74, "total": 3199025.58, "rawtotal": "3199025.58"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Cardio (40 pt)\nPeads Cardio (2pt)", "justLo": "", "remark": "Usage also included usage for 7 pesakit tajaan"}, "flags": [], "raw": {"no": "13", "status": "PUB-OP", "pic": "JOO SZE HAO", "drug": "Macitentan 10mg Tablet", "cat": "A*", "quota": "23/30", "u2023": "2526", "u2024": "4301", "t2324": "70.3%", "u2025": "8288", "t2425": "92.70%", "u2026h1": "10811", "t2526": "160.88%", "usage_total": "25926", "p2023": "280.67", "c2023": "708972.42", "p2024": "116.78", "c2024": "502270.78", "p2025": "116.78", "c2025": "967872.64", "p2026": "94.34", "c2026h1": "1019909.74", "cost_total": "3199025.58", "appl": "", "nonappl": "1", "other_disc": "Cardio (40 pt)\nPeads Cardio (2pt)", "just_lo": "", "remark": "Usage also included usage for 7 pesakit tajaan"}}, {"no": "14", "status": "PUB-OP", "pic": "FATIN L.", "drug": "Mycophenolate Mofetil 250mg Tablet", "cat": "A*", "catKey": "A*", "quota": "0/2", "usage": {"y2023": 48933.0, "y2024": 74739.0, "y2025": 95033.0, "h2026": 34620.0, "total": 253325.0, "raw2023": "48933", "raw2024": "74739", "raw2025": "95033", "raw2026": "34620", "rawtotal": "253325"}, "trend": {"t2324": {"pct": 52.7}, "t2425": {"pct": 27.1}, "t2526": {"pct": -27.1}}, "price": {"p2023": 0.44, "p2024": 0.71, "p2025": 0.418, "p2026": 0.418, "raw2023": "0.44", "raw2024": "0.71", "raw2025": "0.418", "raw2026": "0.418"}, "cost": {"c2023": 21530.52, "c2024": 53064.69, "c2025": 39723.794, "c2026h1": 14471.16, "total": 128790.164, "rawtotal": "128790.164"}, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "", "justLo": "UKK by stok item. Not PUB for Respi indication.", "remark": "Shared quota 250mg & 500mg"}, "flags": [], "raw": {"no": "14", "status": "PUB-OP", "pic": "FATIN L.", "drug": "Mycophenolate Mofetil 250mg Tablet", "cat": "A*", "quota": "0/2", "u2023": "48933", "u2024": "74739", "t2324": "52.7%", "u2025": "95033", "t2425": "27.15%", "u2026h1": "34620", "t2526": "-27.14%", "usage_total": "253325", "p2023": "0.44", "c2023": "21530.52", "p2024": "0.71", "c2024": "53064.69", "p2025": "0.418", "c2025": "39723.794", "p2026": "0.418", "c2026h1": "14471.16", "cost_total": "128790.164", "appl": "1", "nonappl": "", "other_disc": "", "just_lo": "UKK by stok item. Not PUB for Respi indication.", "remark": "Shared quota 250mg & 500mg"}}, {"no": "15", "status": "PUB-OP", "pic": "FATIN L.", "drug": "Mycophenolate Mofetil 500mg Tablet", "cat": "A*", "catKey": "A*", "quota": "0/2", "usage": {"y2023": 78305.0, "y2024": 116580.0, "y2025": 160981.0, "h2026": 47086.0, "total": 402952.0, "raw2023": "78305", "raw2024": "116580", "raw2025": "160981", "raw2026": "47086", "rawtotal": "402952"}, "trend": {"t2324": {"pct": 48.9}, "t2425": {"pct": 38.1}, "t2526": {"pct": -41.5}}, "price": {"p2023": 0.84, "p2024": 0.649, "p2025": 0.649, "p2026": 0.649, "raw2023": "0.84", "raw2024": "0.649", "raw2025": "0.649", "raw2026": "0.649"}, "cost": {"c2023": 65776.2, "c2024": 75660.42, "c2025": 104476.669, "c2026h1": 30558.814, "total": 276472.103, "rawtotal": "276472.103"}, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "NEPHRO (OPEN)", "justLo": "UKK by stok item. Not PUB for Respi indication.", "remark": "Shared quota 250mg & 500mg"}, "flags": [], "raw": {"no": "15", "status": "PUB-OP", "pic": "FATIN L.", "drug": "Mycophenolate Mofetil 500mg Tablet", "cat": "A*", "quota": "0/2", "u2023": "78305", "u2024": "116580", "t2324": "48.9%", "u2025": "160981", "t2425": "38.09%", "u2026h1": "47086", "t2526": "-41.50%", "usage_total": "402952", "p2023": "0.84", "c2023": "65776.2", "p2024": "0.649", "c2024": "75660.42", "p2025": "0.649", "c2025": "104476.669", "p2026": "0.649", "c2026h1": "30558.814", "cost_total": "276472.103", "appl": "1", "nonappl": "", "other_disc": "NEPHRO (OPEN)", "just_lo": "UKK by stok item. Not PUB for Respi indication.", "remark": "Shared quota 250mg & 500mg"}}, {"no": "16", "status": "PUB-OP", "pic": "JOO SZE HAO", "drug": "Nintedanib 100mg Capsule", "cat": "A*", "catKey": "A*", "quota": "17/31", "usage": {"y2023": 1780.0, "y2024": 2999.0, "y2025": 3455.0, "h2026": 240.0, "total": 8474.0, "raw2023": "1780", "raw2024": "2999", "raw2025": "3455", "raw2026": "240", "rawtotal": "8474"}, "trend": {"t2324": {"pct": 68.5}, "t2425": {"pct": 15.2}, "t2526": {"pct": -86.1}}, "price": {"p2023": 57.13, "p2024": 57.13, "p2025": 57.127, "p2026": 29.3, "raw2023": "57.13", "raw2024": "57.13", "raw2025": "57.127", "raw2026": "29.3"}, "cost": {"c2023": 101691.4, "c2024": 171332.87, "c2025": 197373.785, "c2026h1": 7032.0, "total": 477430.055, "rawtotal": "477430.055"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": "Shared quota 100mg & 150mg (12 pt + 5 pt)"}, "flags": [], "raw": {"no": "16", "status": "PUB-OP", "pic": "JOO SZE HAO", "drug": "Nintedanib 100mg Capsule", "cat": "A*", "quota": "17/31", "u2023": "1780", "u2024": "2999", "t2324": "68.5%", "u2025": "3455", "t2425": "15.21%", "u2026h1": "240", "t2526": "-86.11%", "usage_total": "8474", "p2023": "57.13", "c2023": "101691.4", "p2024": "57.13", "c2024": "171332.87", "p2025": "57.127", "c2025": "197373.785", "p2026": "29.3", "c2026h1": "7032", "cost_total": "477430.055", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "Shared quota 100mg & 150mg (12 pt + 5 pt)"}}, {"no": "17", "status": "PUB-OP", "pic": "JOO SZE HAO", "drug": "Nintedanib 150mg Capsule", "cat": "A*", "catKey": "A*", "quota": "17/31", "usage": {"y2023": 2244.0, "y2024": 6056.0, "y2025": 5941.0, "h2026": 2000.0, "total": 16241.0, "raw2023": "2244", "raw2024": "6056", "raw2025": "5941", "raw2026": "2000", "rawtotal": "16241"}, "trend": {"t2324": {"pct": 169.9}, "t2425": {"pct": -1.9}, "t2526": {"pct": -32.7}}, "price": {"p2023": 57.13, "p2024": 57.127, "p2025": 57.127, "p2026": 30.0, "raw2023": "57.13", "raw2024": "57.127", "raw2025": "57.127", "raw2026": "30"}, "cost": {"c2023": 128199.72, "c2024": 345961.112, "c2025": 339391.507, "c2026h1": 60000.0, "total": 873552.339, "rawtotal": "873552.339"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": "Shared quota 100mg & 150mg (12 pt + 5 pt), Usage also included usage for 3 pesakit tajaan"}, "flags": [], "raw": {"no": "17", "status": "PUB-OP", "pic": "JOO SZE HAO", "drug": "Nintedanib 150mg Capsule", "cat": "A*", "quota": "17/31", "u2023": "2244", "u2024": "6056", "t2324": "169.9%", "u2025": "5941", "t2425": "-1.90%", "u2026h1": "2000", "t2526": "-32.67%", "usage_total": "16241", "p2023": "57.13", "c2023": "128199.72", "p2024": "57.127", "c2024": "345961.112", "p2025": "57.127", "c2025": "339391.507", "p2026": "30", "c2026h1": "60000", "cost_total": "873552.339", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "Shared quota 100mg & 150mg (12 pt + 5 pt), Usage also included usage for 3 pesakit tajaan"}}, {"no": "18", "status": "PUB-OP", "pic": "VINOSHINI", "drug": "Pneumococcal Polysaccharide Conjugate Vaccine 13-valent\n(PREVENAR 13)", "cat": "C+", "catKey": "C+", "quota": "60/100", "usage": {"y2023": 47.0, "y2024": 34.0, "y2025": 54.0, "h2026": 76.0, "total": 211.0, "raw2023": "47", "raw2024": "34", "raw2025": "54", "raw2026": "76", "rawtotal": "211"}, "trend": {"t2324": {"pct": -27.7}, "t2425": {"pct": 58.8}, "t2526": {"pct": 181.5}}, "price": {"p2023": 48.48, "p2024": 48.48, "p2025": 48.48, "p2026": 48.48, "raw2023": "48.48", "raw2024": "48.48", "raw2025": "48.48", "raw2026": "48.48"}, "cost": {"c2023": 2278.56, "c2024": 1648.32, "c2025": 2617.92, "c2026h1": 3684.48, "total": 10229.28, "rawtotal": "10229.28"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Medical (Hemato) (5 pt)", "justLo": "", "remark": "Quota refresh every year"}, "flags": [], "raw": {"no": "18", "status": "PUB-OP", "pic": "VINOSHINI", "drug": "Pneumococcal Polysaccharide Conjugate Vaccine 13-valent\n(PREVENAR 13)", "cat": "C+", "quota": "60/100", "u2023": "47", "u2024": "34", "t2324": "-27.7%", "u2025": "54", "t2425": "58.82%", "u2026h1": "76", "t2526": "181.48%", "usage_total": "211", "p2023": "48.48", "c2023": "2278.56", "p2024": "48.48", "c2024": "1648.32", "p2025": "48.48", "c2025": "2617.92", "p2026": "48.48", "c2026h1": "3684.48", "cost_total": "10229.28", "appl": "", "nonappl": "1", "other_disc": "Medical (Hemato) (5 pt)", "just_lo": "", "remark": "Quota refresh every year"}}, {"no": "19", "status": "PUB-OP", "pic": "FATIN L.", "drug": "Salmeterol 50mcg + Fluticasone 500mcg Inhalation\n(SERETIDE)", "cat": "A*", "catKey": "A*", "quota": "24/70", "usage": {"y2023": 359.0, "y2024": 349.0, "y2025": 300.0, "h2026": 118.0, "total": 1126.0, "raw2023": "359", "raw2024": "349", "raw2025": "300", "raw2026": "118", "rawtotal": "1126"}, "trend": {"t2324": {"pct": -2.8}, "t2425": {"pct": -14.0}, "t2526": {"pct": -21.3}}, "price": {"p2023": 40.2, "p2024": 36.18, "p2025": 36.18, "p2026": 36.18, "raw2023": "40.2", "raw2024": "36.18", "raw2025": "36.18", "raw2026": "36.18"}, "cost": {"c2023": 14431.8, "c2024": 12626.82, "c2025": 10854.0, "c2026h1": 4269.24, "total": 42181.86, "rawtotal": "42181.86"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "19", "status": "PUB-OP", "pic": "FATIN L.", "drug": "Salmeterol 50mcg + Fluticasone 500mcg Inhalation\n(SERETIDE)", "cat": "A*", "quota": "24/70", "u2023": "359", "u2024": "349", "t2324": "-2.8%", "u2025": "300", "t2425": "-14.04%", "u2026h1": "118", "t2526": "-21.33%", "usage_total": "1126", "p2023": "40.2", "c2023": "14431.8", "p2024": "36.18", "c2024": "12626.82", "p2025": "36.18", "c2025": "10854", "p2026": "36.18", "c2026h1": "4269.24", "cost_total": "42181.86", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "20", "status": "OPEN PUB-OP", "pic": "AMTA", "drug": "Tiotropium 2.5mcg + Olodaterol 2.5mcg Inhalation\n(SPIOLTO RESPIMAT)", "cat": "A/KK", "catKey": "A/KK", "quota": "275/600", "usage": {"y2023": 339.0, "y2024": 397.0, "y2025": 1696.0, "h2026": 1076.0, "total": 3508.0, "raw2023": "339", "raw2024": "397", "raw2025": "1696", "raw2026": "1076", "rawtotal": "3508"}, "trend": {"t2324": {"pct": 17.1}, "t2425": {"pct": 327.2}, "t2526": {"pct": 26.9}}, "price": {"p2023": 79.92, "p2024": 79.92, "p2025": 79.95, "p2026": 90.5, "raw2023": "79.92", "raw2024": "79.92", "raw2025": "79.95", "raw2026": "90.5"}, "cost": {"c2023": 27092.88, "c2024": 31728.24, "c2025": 135595.2, "c2026h1": 97378.0, "total": 291794.32, "rawtotal": "291794.32"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "First line in COPD Group B & E (GOLD guideline). Alternative for pMDI Berodual discontinuation. If cap of number of pt must apply. Suggest monitor by number of canister.", "remark": ""}, "flags": [], "raw": {"no": "20", "status": "OPEN PUB-OP", "pic": "AMTA", "drug": "Tiotropium 2.5mcg + Olodaterol 2.5mcg Inhalation\n(SPIOLTO RESPIMAT)", "cat": "A/KK", "quota": "275/600", "u2023": "339", "u2024": "397", "t2324": "17.1%", "u2025": "1696", "t2425": "327.20%", "u2026h1": "1076", "t2526": "26.89%", "usage_total": "3508", "p2023": "79.92", "c2023": "27092.88", "p2024": "79.92", "c2024": "31728.24", "p2025": "79.95", "c2025": "135595.2", "p2026": "90.5", "c2026h1": "97378", "cost_total": "291794.32", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "First line in COPD Group B & E (GOLD guideline). Alternative for pMDI Berodual discontinuation. If cap of number of pt must apply. Suggest monitor by number of canister.", "remark": ""}}, {"no": "21", "status": "PUB-OP", "pic": "FATIN L.", "drug": "Tiotropium 2.5mcg Solution for Inhalation\n(SPIRIVA RESPIMAT)", "cat": "A/KK", "catKey": "A/KK", "quota": "342/405", "usage": {"y2023": 1607.0, "y2024": 1523.0, "y2025": 1870.0, "h2026": 1378.0, "total": 6378.0, "raw2023": "1607", "raw2024": "1523", "raw2025": "1870", "raw2026": "1378", "rawtotal": "6378"}, "trend": {"t2324": {"pct": -5.2}, "t2425": {"pct": 22.8}, "t2526": {"pct": 47.4}}, "price": {"p2023": 82.5, "p2024": 82.5, "p2025": 82.5, "p2026": 82.5, "raw2023": "82.5", "raw2024": "82.5", "raw2025": "82.5", "raw2026": "82.5"}, "cost": {"c2023": 132577.5, "c2024": 125647.5, "c2025": 154275.0, "c2026h1": 113685.0, "total": 526185.0, "rawtotal": "526185"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "First line in COPD grp A (GOLD guideline). Alternative for pMDI Berodual discontinuation. If cap of number of pt must apply. Suggest monitor by number of canister.", "remark": ""}, "flags": [], "raw": {"no": "21", "status": "PUB-OP", "pic": "FATIN L.", "drug": "Tiotropium 2.5mcg Solution for Inhalation\n(SPIRIVA RESPIMAT)", "cat": "A/KK", "quota": "342/405", "u2023": "1607", "u2024": "1523", "t2324": "-5.2%", "u2025": "1870", "t2425": "22.78%", "u2026h1": "1378", "t2526": "47.38%", "usage_total": "6378", "p2023": "82.5", "c2023": "132577.5", "p2024": "82.5", "c2024": "125647.5", "p2025": "82.5", "c2025": "154275", "p2026": "82.5", "c2026h1": "113685", "cost_total": "526185", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "First line in COPD grp A (GOLD guideline). Alternative for pMDI Berodual discontinuation. If cap of number of pt must apply. Suggest monitor by number of canister.", "remark": ""}}, {"no": "22", "status": "PUB-OP", "pic": "VINOSHINI", "drug": "Umeclidinium 62.5mcg + Vilanterol 25mcg Inhalation\n(ANORO)", "cat": "A*", "catKey": "A*", "quota": "13/10", "usage": {"y2023": 60.0, "y2024": 65.0, "y2025": 62.0, "h2026": 55.0, "total": 242.0, "raw2023": "60", "raw2024": "65", "raw2025": "62", "raw2026": "55", "rawtotal": "242"}, "trend": {"t2324": {"pct": 8.3}, "t2425": {"pct": -4.6}, "t2526": {"pct": 77.4}}, "price": {"p2023": 107.85, "p2024": 108.27, "p2025": 89.0, "p2026": 89.29, "raw2023": "107.85", "raw2024": "108.27", "raw2025": "89", "raw2026": "89.29"}, "cost": {"c2023": 6471.0, "c2024": 7037.55, "c2025": 5518.0, "c2026h1": 4910.95, "total": 23937.5, "rawtotal": "23937.5"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "22", "status": "PUB-OP", "pic": "VINOSHINI", "drug": "Umeclidinium 62.5mcg + Vilanterol 25mcg Inhalation\n(ANORO)", "cat": "A*", "quota": "13/10", "u2023": "60", "u2024": "65", "t2324": "8.3%", "u2025": "62", "t2425": "-4.62%", "u2026h1": "55", "t2526": "77.42%", "usage_total": "242", "p2023": "107.85", "c2023": "6471", "p2024": "108.27", "c2024": "7037.55", "p2025": "89", "c2025": "5518", "p2026": "89.29", "c2026h1": "4910.95", "cost_total": "23937.5", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "23", "status": "PUB-OP", "pic": "NADIA", "drug": "Voriconazole 200mg Tablet", "cat": "A*", "catKey": "A*", "quota": "2/4", "usage": {"y2023": 605.0, "y2024": 354.0, "y2025": 1184.0, "h2026": 432.0, "total": 2575.0, "raw2023": "605", "raw2024": "354", "raw2025": "1184", "raw2026": "432", "rawtotal": "2575"}, "trend": {"t2324": {"pct": -41.5}, "t2425": {"pct": 234.5}, "t2526": {"pct": -27.0}}, "price": {"p2023": 51.77, "p2024": 51.77, "p2025": 20.97, "p2026": 20.97, "raw2023": "51.77", "raw2024": "51.77", "raw2025": "20.97", "raw2026": "20.97"}, "cost": {"c2023": 31320.85, "c2024": 18326.58, "c2025": 24828.48, "c2026h1": 9059.04, "total": 83534.95, "rawtotal": "83534.95"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": "4 active pt at one time"}, "flags": [], "raw": {"no": "23", "status": "PUB-OP", "pic": "NADIA", "drug": "Voriconazole 200mg Tablet", "cat": "A*", "quota": "2/4", "u2023": "605", "u2024": "354", "t2324": "-41.5%", "u2025": "1184", "t2425": "234.46%", "u2026h1": "432", "t2526": "-27.03%", "usage_total": "2575", "p2023": "51.77", "c2023": "31320.85", "p2024": "51.77", "c2024": "18326.58", "p2025": "20.97", "c2025": "24828.48", "p2026": "20.97", "c2026h1": "9059.04", "cost_total": "83534.95", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "4 active pt at one time"}}, {"no": "24", "status": "KPK-> PUB OP", "pic": "JOO SZE HAO", "drug": "Budesonide 160mcg + Glycopyrronium + Formoterol\n(BREZTRI AEROSPHERE)", "cat": "A*", "catKey": "A*", "quota": "11/25", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 0.0, "h2026": 35.0, "total": 35.0, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "35", "rawtotal": "35"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 0.0, "p2024": 0.0, "p2025": 0.0, "p2026": 0.0, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "0"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 0.0, "total": 0.0, "rawtotal": "0"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "Moved to PUB", "remark": "11 KPK SAMPLE approved previously, recently convert to PUB"}, "flags": [], "raw": {"no": "24", "status": "KPK-> PUB OP", "pic": "JOO SZE HAO", "drug": "Budesonide 160mcg + Glycopyrronium + Formoterol\n(BREZTRI AEROSPHERE)", "cat": "A*", "quota": "11/25", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "0", "t2425": "#DIV/0!", "u2026h1": "35", "t2526": "#DIV/0!", "usage_total": "35", "p2023": "0", "c2023": "0", "p2024": "0", "c2024": "0", "p2025": "0", "c2025": "0", "p2026": "0", "c2026h1": "0", "cost_total": "0", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "Moved to PUB", "remark": "11 KPK SAMPLE approved previously, recently convert to PUB"}}]}, {"name": "UKK RESPIRATORY (OP)", "drugs": [{"no": "1", "status": "KPK-OP", "pic": "FATIN L.", "drug": "Ambrisentan 10mg Tablet", "cat": "KPK", "catKey": "OTHER", "quota": "0 pt", "usage": {"y2023": 60.0, "y2024": 0.0, "y2025": 0.0, "h2026": 0.0, "total": 60.0, "raw2023": "60", "raw2024": "0", "raw2025": "0", "raw2026": "0", "rawtotal": "60"}, "trend": {"t2324": {"pct": -100.0}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 289.5, "p2024": 0.0, "p2025": 0.0, "p2026": 0.0, "raw2023": "289.5", "raw2024": "0", "raw2025": "0", "raw2026": "0"}, "cost": {"c2023": 17370.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 0.0, "total": 17370.0, "rawtotal": "17370"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "1", "status": "KPK-OP", "pic": "FATIN L.", "drug": "Ambrisentan 10mg Tablet", "cat": "KPK", "quota": "0 pt", "u2023": "60", "u2024": "0", "t2324": "-100.0%", "u2025": "0", "t2425": "#DIV/0!", "u2026h1": "0", "t2526": "#DIV/0!", "usage_total": "60", "p2023": "289.5", "c2023": "17370", "p2024": "0", "c2024": "0", "p2025": "0", "c2025": "0", "p2026": "0", "c2026h1": "0", "cost_total": "17370", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "2", "status": "KPK-OP (SAMPLE + HOSPITAL)", "pic": "AMTA", "drug": "Beclomethasone + Formoterol + Glycopyrronium Inhalation\n(TRIMBOW)", "cat": "KPK", "catKey": "OTHER", "quota": "4 sample, 4 hosp", "usage": {"y2023": 0.0, "y2024": 9.0, "y2025": 35.0, "h2026": 17.0, "total": 61.0, "raw2023": "0", "raw2024": "9", "raw2025": "35", "raw2026": "17", "rawtotal": "61"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"pct": 288.9}, "t2526": {"pct": -2.9}}, "price": {"p2023": 0.0, "p2024": 0.0, "p2025": 210.75, "p2026": 210.8, "raw2023": "0", "raw2024": "0", "raw2025": "210.75", "raw2026": "210.8"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 7376.25, "c2026h1": 3583.6, "total": 10959.85, "rawtotal": "10959.85"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "2", "status": "KPK-OP (SAMPLE + HOSPITAL)", "pic": "AMTA", "drug": "Beclomethasone + Formoterol + Glycopyrronium Inhalation\n(TRIMBOW)", "cat": "KPK", "quota": "4 sample, 4 hosp", "u2023": "0", "u2024": "9", "t2324": "#DIV/0!", "u2025": "35", "t2425": "288.89%", "u2026h1": "17", "t2526": "-2.86%", "usage_total": "61", "p2023": "0", "c2023": "0", "p2024": "0", "c2024": "0", "p2025": "210.75", "c2025": "7376.25", "p2026": "210.8", "c2026h1": "3583.6", "cost_total": "10959.85", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "3", "status": "KPK-OP (STOK)", "pic": "JOO SZE HAO", "drug": "Beraprost 20mcg Tablet", "cat": "KPK", "catKey": "OTHER", "quota": "6125/4500", "usage": {"y2023": 0.0, "y2024": 8490.0, "y2025": 11361.0, "h2026": 8088.0, "total": 27939.0, "raw2023": "0", "raw2024": "8490", "raw2025": "11361", "raw2026": "8088", "rawtotal": "27939"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"pct": 33.8}, "t2526": {"pct": 42.4}}, "price": {"p2023": 0.0, "p2024": 1.13, "p2025": 1.13, "p2026": 1.09, "raw2023": "0", "raw2024": "1.13", "raw2025": "1.13", "raw2026": "1.09"}, "cost": {"c2023": 0.0, "c2024": 9593.7, "c2025": 12837.93, "c2026h1": 8815.92, "total": 31247.55, "rawtotal": "31247.55"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "3", "status": "KPK-OP (STOK)", "pic": "JOO SZE HAO", "drug": "Beraprost 20mcg Tablet", "cat": "KPK", "quota": "6125/4500", "u2023": "0", "u2024": "8490", "t2324": "#DIV/0!", "u2025": "11361", "t2425": "33.82%", "u2026h1": "8088", "t2526": "42.38%", "usage_total": "27939", "p2023": "0", "c2023": "0", "p2024": "1.13", "c2024": "9593.7", "p2025": "1.13", "c2025": "12837.93", "p2026": "1.09", "c2026h1": "8815.92", "cost_total": "31247.55", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "5", "status": "KPK-OP", "pic": "JOO SZE HAO", "drug": "Iloprost Nebulising Solution 20mcg/2ml", "cat": "KPK", "catKey": "OTHER", "quota": "4 pt", "usage": {"y2023": 0.0, "y2024": 152.0, "y2025": 1838.0, "h2026": 2209.0, "total": 4199.0, "raw2023": "0", "raw2024": "152", "raw2025": "1838", "raw2026": "2209", "rawtotal": "4199"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"pct": 1109.2}, "t2526": {"pct": 140.4}}, "price": {"p2023": 71.993, "p2024": 37.5, "p2025": 104.93, "p2026": 104.0, "raw2023": "71.993", "raw2024": "37.5", "raw2025": "104.93", "raw2026": "104"}, "cost": {"c2023": 0.0, "c2024": 5700.0, "c2025": 192861.34, "c2026h1": 229736.0, "total": 428297.34, "rawtotal": "428297.34"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "5", "status": "KPK-OP", "pic": "JOO SZE HAO", "drug": "Iloprost Nebulising Solution 20mcg/2ml", "cat": "KPK", "quota": "4 pt", "u2023": "0", "u2024": "152", "t2324": "#DIV/0!", "u2025": "1838", "t2425": "1109.21%", "u2026h1": "2209", "t2526": "140.37%", "usage_total": "4199", "p2023": "71.993", "c2023": "0", "p2024": "37.5", "c2024": "5700", "p2025": "104.93", "c2025": "192861.34", "p2026": "104", "c2026h1": "229736", "cost_total": "428297.34", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "6", "status": "KPK-OP", "pic": "NADIA", "drug": "Methotrexate 2.5mg Tablet", "cat": "KPK", "catKey": "OTHER", "quota": "10 pt", "usage": {"y2023": 98082.0, "y2024": 121085.0, "y2025": 138689.0, "h2026": 39907.0, "total": 397763.0, "raw2023": "98082", "raw2024": "121085", "raw2025": "138689", "raw2026": "39907", "rawtotal": "397763"}, "trend": {"t2324": {"pct": 23.5}, "t2425": {"pct": 14.5}, "t2526": {"pct": -42.5}}, "price": {"p2023": 0.533, "p2024": 0.39, "p2025": 0.4, "p2026": 0.4, "raw2023": "0.533", "raw2024": "0.39", "raw2025": "0.4", "raw2026": "0.4"}, "cost": {"c2023": 52277.706, "c2024": 47223.15, "c2025": 55475.6, "c2026h1": 15962.8, "total": 170939.256, "rawtotal": "170939.256"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "6", "status": "KPK-OP", "pic": "NADIA", "drug": "Methotrexate 2.5mg Tablet", "cat": "KPK", "quota": "10 pt", "u2023": "98082", "u2024": "121085", "t2324": "23.5%", "u2025": "138689", "t2425": "14.54%", "u2026h1": "39907", "t2526": "-42.45%", "usage_total": "397763", "p2023": "0.533", "c2023": "52277.706", "p2024": "0.39", "c2024": "47223.15", "p2025": "0.4", "c2025": "55475.6", "p2026": "0.4", "c2026h1": "15962.8", "cost_total": "170939.256", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "7", "status": "KPK-OP", "pic": "FATIN L.", "drug": "Mycophenolate Mofetil Sodium 180mg Tablet \n(MYFORTIC)", "cat": "KPK", "catKey": "OTHER", "quota": "5 pt", "usage": {"y2023": 2720.0, "y2024": 3120.0, "y2025": 4135.0, "h2026": 1948.0, "total": 11923.0, "raw2023": "2720", "raw2024": "3120", "raw2025": "4135", "raw2026": "1948", "rawtotal": "11923"}, "trend": {"t2324": {"pct": 14.7}, "t2425": {"pct": 32.5}, "t2526": {"pct": -5.8}}, "price": {"p2023": 3.434, "p2024": 3.533, "p2025": 2.835, "p2026": 2.833, "raw2023": "3.434", "raw2024": "3.533", "raw2025": "2.835", "raw2026": "2.833"}, "cost": {"c2023": 9340.48, "c2024": 11022.96, "c2025": 11722.725, "c2026h1": 5518.684, "total": 37604.849, "rawtotal": "37604.849"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "7", "status": "KPK-OP", "pic": "FATIN L.", "drug": "Mycophenolate Mofetil Sodium 180mg Tablet \n(MYFORTIC)", "cat": "KPK", "quota": "5 pt", "u2023": "2720", "u2024": "3120", "t2324": "14.7%", "u2025": "4135", "t2425": "32.53%", "u2026h1": "1948", "t2526": "-5.78%", "usage_total": "11923", "p2023": "3.434", "c2023": "9340.48", "p2024": "3.533", "c2024": "11022.96", "p2025": "2.835", "c2025": "11722.725", "p2026": "2.833", "c2026h1": "5518.684", "cost_total": "37604.849", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "8", "status": "KPK-OP", "pic": "FATIN L.", "drug": "Mycophenolate Mofetil Sodium 360mg Tablet \n(MYFORTIC)", "cat": "KPK", "catKey": "OTHER", "quota": "5 pt", "usage": {"y2023": 20098.0, "y2024": 24552.0, "y2025": 31708.0, "h2026": 16160.0, "total": 92518.0, "raw2023": "20098", "raw2024": "24552", "raw2025": "31708", "raw2026": "16160", "rawtotal": "92518"}, "trend": {"t2324": {"pct": 22.2}, "t2425": {"pct": 29.1}, "t2526": {"pct": 1.9}}, "price": {"p2023": 6.736, "p2024": 6.9, "p2025": 6.9, "p2026": 6.9, "raw2023": "6.736", "raw2024": "6.9", "raw2025": "6.9", "raw2026": "6.9"}, "cost": {"c2023": 135380.128, "c2024": 169408.8, "c2025": 218785.2, "c2026h1": 111504.0, "total": 635078.128, "rawtotal": "635078.128"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "8", "status": "KPK-OP", "pic": "FATIN L.", "drug": "Mycophenolate Mofetil Sodium 360mg Tablet \n(MYFORTIC)", "cat": "KPK", "quota": "5 pt", "u2023": "20098", "u2024": "24552", "t2324": "22.2%", "u2025": "31708", "t2425": "29.15%", "u2026h1": "16160", "t2526": "1.93%", "usage_total": "92518", "p2023": "6.736", "c2023": "135380.128", "p2024": "6.9", "c2024": "169408.8", "p2025": "6.9", "c2025": "218785.2", "p2026": "6.9", "c2026h1": "111504", "cost_total": "635078.128", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "9", "status": "KPK-OP", "pic": "FATIN L.", "drug": "Mycophenolate Mofetil 250mg Tablet\n(MYCOFIT)", "cat": "KPK", "catKey": "OTHER", "quota": "46 pt", "usage": {"y2023": 48933.0, "y2024": 74739.0, "y2025": 95033.0, "h2026": 34620.0, "total": 253325.0, "raw2023": "48933", "raw2024": "74739", "raw2025": "95033", "raw2026": "34620", "rawtotal": "253325"}, "trend": {"t2324": {"pct": 52.7}, "t2425": {"pct": 27.1}, "t2526": {"pct": -27.1}}, "price": {"p2023": 0.44, "p2024": 0.71, "p2025": 0.418, "p2026": 0.418, "raw2023": "0.44", "raw2024": "0.71", "raw2025": "0.418", "raw2026": "0.418"}, "cost": {"c2023": 21530.52, "c2024": 53064.69, "c2025": 39723.794, "c2026h1": 14471.16, "total": 128790.164, "rawtotal": "128790.164"}, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "9", "status": "KPK-OP", "pic": "FATIN L.", "drug": "Mycophenolate Mofetil 250mg Tablet\n(MYCOFIT)", "cat": "KPK", "quota": "46 pt", "u2023": "48933", "u2024": "74739", "t2324": "52.7%", "u2025": "95033", "t2425": "27.15%", "u2026h1": "34620", "t2526": "-27.14%", "usage_total": "253325", "p2023": "0.44", "c2023": "21530.52", "p2024": "0.71", "c2024": "53064.69", "p2025": "0.418", "c2025": "39723.794", "p2026": "0.418", "c2026h1": "14471.16", "cost_total": "128790.164", "appl": "1", "nonappl": "", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "10", "status": "KPK-OP", "pic": "FATIN L.", "drug": "Mycophenolate Mofetil 500mg Tablet\n(MYCOFIT)", "cat": "KPK", "catKey": "OTHER", "quota": "46 pt", "usage": {"y2023": 78305.0, "y2024": 116580.0, "y2025": 160981.0, "h2026": 47086.0, "total": 402952.0, "raw2023": "78305", "raw2024": "116580", "raw2025": "160981", "raw2026": "47086", "rawtotal": "402952"}, "trend": {"t2324": {"pct": 48.9}, "t2425": {"pct": 38.1}, "t2526": {"pct": -41.5}}, "price": {"p2023": 0.65, "p2024": 0.649, "p2025": 0.649, "p2026": 0.649, "raw2023": "0.65", "raw2024": "0.649", "raw2025": "0.649", "raw2026": "0.649"}, "cost": {"c2023": 50898.25, "c2024": 75660.42, "c2025": 104476.669, "c2026h1": 30558.814, "total": 261594.153, "rawtotal": "261594.153"}, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "10", "status": "KPK-OP", "pic": "FATIN L.", "drug": "Mycophenolate Mofetil 500mg Tablet\n(MYCOFIT)", "cat": "KPK", "quota": "46 pt", "u2023": "78305", "u2024": "116580", "t2324": "48.9%", "u2025": "160981", "t2425": "38.09%", "u2026h1": "47086", "t2526": "-41.50%", "usage_total": "402952", "p2023": "0.65", "c2023": "50898.25", "p2024": "0.649", "c2024": "75660.42", "p2025": "0.649", "c2025": "104476.669", "p2026": "0.649", "c2026h1": "30558.814", "cost_total": "261594.153", "appl": "1", "nonappl": "", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "11", "status": "KPK-OP", "pic": "JOO SZE HAO", "drug": "Riociguat 1mg & 2mg & 2.5mg Tablet", "cat": "KPK", "catKey": "OTHER", "quota": "1 pt", "usage": {"y2023": null, "y2024": null, "y2025": null, "h2026": null, "total": 0.0, "raw2023": "", "raw2024": "", "raw2025": "", "raw2026": "", "rawtotal": "0"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 100.67, "p2024": 100.476, "p2025": 100.476, "p2026": 100.476, "raw2023": "100.67", "raw2024": "100.476", "raw2025": "100.476", "raw2026": "100.476"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 0.0, "total": 0.0, "rawtotal": "0"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "11", "status": "KPK-OP", "pic": "JOO SZE HAO", "drug": "Riociguat 1mg & 2mg & 2.5mg Tablet", "cat": "KPK", "quota": "1 pt", "u2023": "", "u2024": "", "t2324": "#DIV/0!", "u2025": "", "t2425": "#DIV/0!", "u2026h1": "", "t2526": "#DIV/0!", "usage_total": "0", "p2023": "100.67", "c2023": "0", "p2024": "100.476", "c2024": "0", "p2025": "100.476", "c2025": "0", "p2026": "100.476", "c2026h1": "0", "cost_total": "0", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "12", "status": "KPK-OP (HOSPITAL + TAJAAN)", "pic": "JOO SZE HAO", "drug": "Selexipag Tablet", "cat": "KPK", "catKey": "OTHER", "quota": "10 hosp + 4 tajaan", "usage": {"y2023": null, "y2024": null, "y2025": null, "h2026": null, "total": 0.0, "raw2023": "", "raw2024": "", "raw2025": "", "raw2026": "", "rawtotal": "0"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 0.0, "p2024": 210.38, "p2025": 210.17, "p2026": 69.17, "raw2023": "0", "raw2024": "210.38", "raw2025": "210.17", "raw2026": "69.17"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 0.0, "total": 0.0, "rawtotal": "0"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "12", "status": "KPK-OP (HOSPITAL + TAJAAN)", "pic": "JOO SZE HAO", "drug": "Selexipag Tablet", "cat": "KPK", "quota": "10 hosp + 4 tajaan", "u2023": "", "u2024": "", "t2324": "#DIV/0!", "u2025": "", "t2425": "#DIV/0!", "u2026h1": "", "t2526": "#DIV/0!", "usage_total": "0", "p2023": "0", "c2023": "0", "p2024": "210.38", "c2024": "0", "p2025": "210.17", "c2025": "0", "p2026": "69.17", "c2026h1": "0", "cost_total": "0", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "13", "status": "KPK-OP (OPEN)", "pic": "NADIA", "drug": "Sildenafil 100mg Tablet", "cat": "KPK", "catKey": "OTHER", "quota": "11 pt", "usage": {"y2023": 70389.0, "y2024": 87737.0, "y2025": 122943.0, "h2026": 58834.0, "total": 339903.0, "raw2023": "70389", "raw2024": "87737", "raw2025": "122943", "raw2026": "58834", "rawtotal": "339903"}, "trend": {"t2324": {"pct": 24.6}, "t2425": {"pct": 40.1}, "t2526": {"pct": -4.3}}, "price": {"p2023": 2.0, "p2024": 2.0, "p2025": 1.775, "p2026": 1.16, "raw2023": "2", "raw2024": "2", "raw2025": "1.775", "raw2026": "1.16"}, "cost": {"c2023": 140778.0, "c2024": 175474.0, "c2025": 218223.825, "c2026h1": 68247.44, "total": 602723.265, "rawtotal": "602723.265"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "13", "status": "KPK-OP (OPEN)", "pic": "NADIA", "drug": "Sildenafil 100mg Tablet", "cat": "KPK", "quota": "11 pt", "u2023": "70389", "u2024": "87737", "t2324": "24.6%", "u2025": "122943", "t2425": "40.13%", "u2026h1": "58834", "t2526": "-4.29%", "usage_total": "339903", "p2023": "2", "c2023": "140778", "p2024": "2", "c2024": "175474", "p2025": "1.775", "c2025": "218223.825", "p2026": "1.16", "c2026h1": "68247.44", "cost_total": "602723.265", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "14", "status": "KPK-OP (HOSPITAL + TAJAAN)", "pic": "FATIN L.", "drug": "Sirolimus 1mg Tablet", "cat": "KPK", "catKey": "OTHER", "quota": "4 hosp + 1 tajaan", "usage": {"y2023": 1837.0, "y2024": 1792.0, "y2025": 1231.0, "h2026": 969.0, "total": 5829.0, "raw2023": "1837", "raw2024": "1792", "raw2025": "1231", "raw2026": "969", "rawtotal": "5829"}, "trend": {"t2324": {"pct": -2.4}, "t2425": {"pct": -31.3}, "t2526": {"pct": 57.4}}, "price": {"p2023": 31.96, "p2024": 31.96, "p2025": 33.645, "p2026": 33.645, "raw2023": "31.96", "raw2024": "31.96", "raw2025": "33.645", "raw2026": "33.645"}, "cost": {"c2023": 58710.52, "c2024": 57272.32, "c2025": 41416.995, "c2026h1": 32602.005, "total": 190001.84, "rawtotal": "190001.84"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "14", "status": "KPK-OP (HOSPITAL + TAJAAN)", "pic": "FATIN L.", "drug": "Sirolimus 1mg Tablet", "cat": "KPK", "quota": "4 hosp + 1 tajaan", "u2023": "1837", "u2024": "1792", "t2324": "-2.4%", "u2025": "1231", "t2425": "-31.31%", "u2026h1": "969", "t2526": "57.43%", "usage_total": "5829", "p2023": "31.96", "c2023": "58710.52", "p2024": "31.96", "c2024": "57272.32", "p2025": "33.645", "c2025": "41416.995", "p2026": "33.645", "c2026h1": "32602.005", "cost_total": "190001.84", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}, {"no": "15", "status": "KPK-OP (STOK)", "pic": "JOO SZE HAO", "drug": "Tadalafil 20mg Tablet", "cat": "KPK", "catKey": "OTHER", "quota": "/5840", "usage": {"y2023": 2441.0, "y2024": 4059.0, "y2025": 5851.0, "h2026": 5923.0, "total": 18274.0, "raw2023": "2441", "raw2024": "4059", "raw2025": "5851", "raw2026": "5923", "rawtotal": "18274"}, "trend": {"t2324": {"pct": 66.3}, "t2425": {"pct": 44.1}, "t2526": {"pct": 102.5}}, "price": {"p2023": 4.188, "p2024": 4.16, "p2025": 4.34, "p2026": 3.0, "raw2023": "4.188", "raw2024": "4.16", "raw2025": "4.34", "raw2026": "3"}, "cost": {"c2023": 10222.908, "c2024": 16885.44, "c2025": 25393.34, "c2026h1": 17769.0, "total": 70270.688, "rawtotal": "70270.688"}, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "15", "status": "KPK-OP (STOK)", "pic": "JOO SZE HAO", "drug": "Tadalafil 20mg Tablet", "cat": "KPK", "quota": "/5840", "u2023": "2441", "u2024": "4059", "t2324": "66.3%", "u2025": "5851", "t2425": "44.15%", "u2026h1": "5923", "t2526": "102.46%", "usage_total": "18274", "p2023": "4.188", "c2023": "10222.908", "p2024": "4.16", "c2024": "16885.44", "p2025": "4.34", "c2025": "25393.34", "p2026": "3", "c2026h1": "17769", "cost_total": "70270.688", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": ""}}]}];
+const LABELS = {"no": "NO", "status": "STATUS", "pic": "PIC (LO)", "drug": "NAMA UBAT", "cat": "KATEGORI FUKKM", "quota": "KUOTA (isi/lulus)", "u2023": "Guna 2023", "u2024": "Guna 2024", "t2324": "Trend 23-24", "u2025": "Guna 2025", "t2425": "Trend 24-25", "u2026h1": "Guna Jan-Jun 2026", "t2526": "Trend 25-26", "usage_total": "Jumlah Guna", "p2023": "Harga/SKU 2023", "c2023": "Kos 2023 (RM)", "p2024": "Harga/SKU 2024", "c2024": "Kos 2024 (RM)", "p2025": "Harga/SKU 2025", "c2025": "Kos 2025 (RM)", "p2026": "Harga/SKU 2026", "c2026h1": "Kos Jan-Jun 2026 (RM)", "cost_total": "Jumlah Kos (RM)", "appl": "APPL", "nonappl": "NON-APPL", "other_disc": "Disiplin Lain Guna?", "just_lo": "Justifikasi LO", "remark": "Catatan"};
+const STATS = {"departments": 2, "drugs": 38, "cats": {"A*": 15, "A/KK": 7, "A": 1, "C+": 1, "OTHER": 14}, "appl": {"APPL": 7, "NON-APPL": 31, "other": 0}, "grandCost": 20726036.49300001};
+
+const CAT_STYLE = {
+  "A*":  "bg-rose-100 text-rose-700 border-rose-200",
+  "A":   "bg-amber-100 text-amber-700 border-amber-200",
+  "A/KK":"bg-violet-100 text-violet-700 border-violet-200",
+  "B":   "bg-sky-100 text-sky-700 border-sky-200",
+  "C+":  "bg-emerald-100 text-emerald-700 border-emerald-200",
+  "OTHER":"bg-slate-100 text-slate-600 border-slate-200",
+};
+const CAT_ORDER = ["A*","A","A/KK","B","C+","OTHER"];
+
+function esc(s){ return (s==null?"":String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function nl2br(s){ return esc(s).replace(/\n/g,"<br>"); }
+function fmtInt(n){ return n==null?"":Math.round(n).toLocaleString('en-US'); }
+function fmtRM(n){ return n==null?"":"RM "+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtPrice(n){ return n==null?"":n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function trendHTML(t){
+  if(!t || (t.pct==null && !t.err)) return '<span class="text-slate-300">&ndash;</span>';
+  if(t.err) return '<span class="text-slate-400" title="'+esc(t.err)+'">n/a</span>';
+  const p=t.pct;
+  if(p>0)  return '<span class="text-emerald-600 font-medium num">&#9650; '+p.toFixed(1)+'%</span>';
+  if(p<0)  return '<span class="text-rose-600 font-medium num">&#9660; '+p.toFixed(1)+'%</span>';
+  return '<span class="text-slate-500 num">&ndash; 0.0%</span>';
+}
+
+// ---- source-group classifier (PUB / OPEN / KPK) ----
+function statusGroup(s){
+  const u=(s||"").toUpperCase();
+  if(u.includes("OPEN")) return "OPEN";
+  if(u.includes("KPK"))  return "KPK";
+  if(u.includes("PUB"))  return "PUB";
+  return "LAIN";
+}
+
+// ---------------- filter state ----------------
+const state = {
+  q:"",
+  dept:"ALL",
+  cats:new Set(CAT_ORDER),
+  groups:new Set(["PUB","OPEN","KPK","LAIN"]),
+  appl:new Set(["APPL","NON-APPL","other"]),
+};
+
+function applFlag(d){ return d.appl.isAppl?"APPL":(d.appl.isNon?"NON-APPL":"other"); }
+
+function matches(d){
+  if(!state.cats.has(d.catKey)) return false;
+  if(!state.groups.has(statusGroup(d.status))) return false;
+  if(!state.appl.has(applFlag(d))) return false;
+  if(state.q){
+    const hay=[d.drug,d.pic,d.no,d.cat,d.status,d.quota,d.gov.otherDisc,d.gov.justLo,d.gov.remark]
+      .join(" ").toLowerCase();
+    if(!hay.includes(state.q)) return false;
+  }
+  return true;
+}
+
+// ---------------- rendering ----------------
+function statCards(){
+  const c=STATS.cats;
+  const cards=[
+    ["Kepakaran", STATS.departments, "text-sky-700"],
+    ["Jumlah Ubat", STATS.drugs, "text-slate-800"],
+    ["A* (perlu authorisation)", c["A*"]||0, "text-rose-600"],
+    ["A / A/KK", (c["A"]||0)+(c["A/KK"]||0), "text-amber-600"],
+    ["NON-APPL", STATS.appl["NON-APPL"]||0, "text-violet-600"],
+    ["Anggaran Kos Terkumpul", fmtRM(STATS.grandCost), "text-teal-700 !text-lg"],
+  ];
+  document.getElementById('statCards').innerHTML = cards.map(([k,v,cls])=>`
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 px-4 py-3">
+      <div class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold leading-tight">${esc(k)}</div>
+      <div class="text-2xl font-bold mt-1 num ${cls}">${typeof v==='number'?v.toLocaleString('en-US'):v}</div>
+    </div>`).join("");
+}
+
+function buildChips(){
+  const cc=document.getElementById('catChips');
+  cc.innerHTML = CAT_ORDER.filter(k=>(STATS.cats[k]||0)>0).map(k=>{
+    const st=CAT_STYLE[k]||CAT_STYLE.OTHER;
+    return `<button data-cat="${k}" class="chip px-2.5 py-1 rounded-full text-xs font-semibold border ${st}">${esc(k)} <span class="opacity-60">${STATS.cats[k]||0}</span></button>`;
+  }).join("");
+  cc.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.cat;
+    if(state.cats.has(k)){state.cats.delete(k);b.classList.add('chip-off');}
+    else{state.cats.add(k);b.classList.remove('chip-off');}
+    render();
+  });
+
+  const sc=document.getElementById('statusChips');
+  const groups=[["PUB","bg-slate-100 text-slate-700 border-slate-200"],
+                ["OPEN","bg-emerald-100 text-emerald-700 border-emerald-200"],
+                ["KPK","bg-indigo-100 text-indigo-700 border-indigo-200"],
+                ["LAIN","bg-slate-100 text-slate-500 border-slate-200"]];
+  sc.innerHTML = groups.map(([g,st])=>`<button data-grp="${g}" class="chip px-2.5 py-1 rounded-full text-xs font-semibold border ${st}">${g}</button>`).join("");
+  sc.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const g=b.dataset.grp;
+    if(state.groups.has(g)){state.groups.delete(g);b.classList.add('chip-off');}
+    else{state.groups.add(g);b.classList.remove('chip-off');}
+    render();
+  });
+
+  const ac=document.getElementById('applChips');
+  const appls=[["APPL","bg-teal-100 text-teal-700 border-teal-200"],
+               ["NON-APPL","bg-orange-100 text-orange-700 border-orange-200"],
+               ["other","bg-slate-100 text-slate-500 border-slate-200"]];
+  ac.innerHTML = appls.map(([g,st])=>`<button data-appl="${g}" class="chip px-2.5 py-1 rounded-full text-xs font-semibold border ${st}">${g==='other'?'Lain':g}</button>`).join("");
+  ac.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const g=b.dataset.appl;
+    if(state.appl.has(g)){state.appl.delete(g);b.classList.add('chip-off');}
+    else{state.appl.add(g);b.classList.remove('chip-off');}
+    render();
+  });
+}
+
+function deptSelect(){
+  const s=document.getElementById('deptFilter');
+  s.innerHTML='<option value="ALL">Semua kepakaran</option>'+
+    DEPARTMENTS.map((d,i)=>`<option value="${i}">${esc(d.name)} (${d.drugs.length})</option>`).join("");
+  s.onchange=()=>{state.dept=s.value;render();};
+}
+
+function highlight(txt){
+  if(!state.q) return esc(txt);
+  const i=txt.toLowerCase().indexOf(state.q);
+  if(i<0) return esc(txt);
+  return esc(txt.slice(0,i))+'<mark>'+esc(txt.slice(i,i+state.q.length))+'</mark>'+esc(txt.slice(i+state.q.length));
+}
+
+function catBadge(d){
+  const st=CAT_STYLE[d.catKey]||CAT_STYLE.OTHER;
+  return `<span class="inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold border ${st}">${esc(d.cat||"-")}</span>`;
+}
+function applBadge(d){
+  if(d.appl.isAppl) return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-teal-100 text-teal-700">APPL</span>';
+  if(d.appl.isNon)  return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-orange-100 text-orange-700">NON-APPL</span>';
+  if(d.appl.note)   return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-600" title="'+esc(d.appl.note)+'">'+esc(d.appl.note.slice(0,14))+'</span>';
+  return '<span class="text-slate-300">&ndash;</span>';
+}
+
+// Compact number for axis / point labels (full value stays in the tooltip).
+function fmtCompact(n){
+  if(!(typeof n==='number'&&isFinite(n))) return '';
+  const a=Math.abs(n);
+  if(a>=1e6) return (n/1e6).toFixed(a>=1e7?0:1)+'M';
+  if(a>=1e3) return (n/1e3).toFixed(a>=1e4?0:1)+'k';
+  if(a>0 && a<1) return n.toFixed(2);
+  return Math.round(n).toLocaleString('en-US');
+}
+
+// Dependency-free annotated line chart.
+// series: [{name,color,values[],fmt,axis:'left'|'right',primary:bool}] each scaled to its own
+// min/max so different magnitudes (RM total vs RM/unit) stay comparable. The primary series gets
+// y-axis ticks (left), point value labels, and per-segment trend badges; a secondary series gets a
+// right axis + endpoint labels. null / non-numeric values become gaps. Placeholder if no numbers.
+function lineChartSVG(series, opts){
+  const labels=opts.labels, W=680, H=252, padL=66, padR=66, padT=28, padB=50;
+  const plotW=W-padL-padR, plotH=H-padT-padB, n=labels.length;
+  const isNum=v=> typeof v==='number' && isFinite(v);
+  if(!series.some(s=>s.values.some(isNum)))
+    return '<div class="mt-1 text-[11px] italic text-slate-400">Tiada data berangka untuk graf</div>';
+
+  const hasBar = series.some(s=>s.type==='bar');
+  const band=plotW/n;
+  const xAt=i=> hasBar ? (padL+band*(i+0.5)) : (n===1 ? padL+plotW/2 : padL+plotW*i/(n-1));
+  const baseY=padT+plotH;
+
+  series.forEach(s=>{
+    const nums=s.values.filter(isNum);
+    let mn=Math.min(...nums), mx=Math.max(...nums);
+    if(mn===mx){ const pad=Math.abs(mx)||1; mn=mx-pad; mx=mx+pad; }
+    if(mn>0) mn=0;                                   // baseline at zero when all positive
+    s._mn=mn; s._mx=mx;
+    s._y=v=> isNum(v) ? (padT+plotH-plotH*(v-mn)/(mx-mn)) : null;
+  });
+  const primary = series.find(s=>s.primary) || series[0];
+  const rightS  = series.find(s=>s.axis==='right');
+
+  // gridlines + left y-axis ticks (primary)
+  const TICKS=4;
+  let grid='', yl='';
+  for(let g=0; g<=TICKS; g++){
+    const y=padT+plotH*g/TICKS;
+    grid+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#eef2f6" stroke-width="1"/>`;
+    const val=primary._mx-(primary._mx-primary._mn)*g/TICKS;
+    yl+=`<text x="${padL-6}" y="${(y+3).toFixed(1)}" font-size="9" fill="${primary.color}" text-anchor="end">${esc(fmtCompact(val))}</text>`;
+  }
+  // right y-axis ticks (secondary)
+  let yr='';
+  if(rightS){
+    for(let g=0; g<=TICKS; g++){
+      const y=padT+plotH*g/TICKS;
+      const val=rightS._mx-(rightS._mx-rightS._mn)*g/TICKS;
+      yr+=`<text x="${W-padR+6}" y="${(y+3).toFixed(1)}" font-size="9" fill="${rightS.color}" text-anchor="start">${esc(fmtCompact(val))}</text>`;
+    }
+  }
+  // x-axis labels + baseline + axis titles
+  let xlabs=`<line x1="${padL}" y1="${baseY}" x2="${W-padR}" y2="${baseY}" stroke="#cbd5e1" stroke-width="1"/>`;
+  labels.forEach((lb,i)=> xlabs+=`<text x="${xAt(i).toFixed(1)}" y="${(baseY+15).toFixed(1)}" font-size="10" fill="#475569" text-anchor="middle">${lb}</text>`);
+  const cy=(padT+baseY)/2;
+  let titles='';
+  if(opts.xTitle) titles+=`<text x="${padL+plotW/2}" y="${H-5}" font-size="11" font-weight="700" fill="#475569" text-anchor="middle">${esc(opts.xTitle)}</text>`;
+  if(opts.yTitleLeft) titles+=`<text x="14" y="${cy}" font-size="11" font-weight="700" fill="${primary.color}" text-anchor="middle" transform="rotate(-90 14 ${cy})">${esc(opts.yTitleLeft)}</text>`;
+  if(opts.yTitleRight&&rightS) titles+=`<text x="${W-14}" y="${cy}" font-size="11" font-weight="700" fill="${rightS.color}" text-anchor="middle" transform="rotate(90 ${W-14} ${cy})">${esc(opts.yTitleRight)}</text>`;
+
+  // BARS first (behind lines)
+  let bars='';
+  series.filter(s=>s.type==='bar').forEach(s=>{
+    const bw=band*0.55;
+    s.values.forEach((v,i)=>{
+      if(!isNum(v)) return;
+      const yTop=s._y(v), x=xAt(i)-bw/2, h=Math.max(0, baseY-yTop);
+      bars+=`<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${s.color}" opacity="0.82" rx="1"><title>${esc(s.name+': '+(s.fmt?s.fmt(v):v))}</title></rect>`;
+      const lbl='RM '+fmtCompact(v);
+      if(h>=16) bars+=`<text x="${xAt(i).toFixed(1)}" y="${(yTop+h/2+3).toFixed(1)}" font-size="8.5" font-weight="700" fill="#fff" text-anchor="middle">${esc(lbl)}</text>`;
+      else      bars+=`<text x="${xAt(i).toFixed(1)}" y="${(yTop-4).toFixed(1)}" font-size="8.5" font-weight="700" fill="${s.color}" text-anchor="middle">${esc(lbl)}</text>`;
+    });
+  });
+
+  // LINES + markers (+ value labels)
+  let paths='';
+  series.filter(s=>s.type!=='bar').forEach(s=>{
+    let d='', started=false; const pts=[];
+    s.values.forEach((v,i)=>{ const y=s._y(v); if(y==null){ started=false; return; }
+      const x=xAt(i); pts.push([x,y,v,i]); d+=(started?' L':' M')+x.toFixed(1)+' '+y.toFixed(1); started=true; });
+    paths+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const last=pts.length-1;
+    pts.forEach(([x,y,v],k)=>{
+      const tip=s.name+': '+(s.fmt?s.fmt(v):v);
+      paths+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.4" fill="#fff" stroke="${s.color}" stroke-width="2"><title>${esc(tip)}</title></circle>`;
+      const showLabel = s.primary ? true : (k===0 || k===last);   // secondary: endpoints only
+      if(showLabel)
+        paths+=`<text x="${x.toFixed(1)}" y="${(y-9).toFixed(1)}" font-size="9.5" font-weight="700" fill="${s.color}" text-anchor="middle" stroke="#fff" stroke-width="2.6" stroke-linejoin="round" style="paint-order:stroke">${esc(fmtCompact(v))}</text>`;
+    });
+    s._pts=pts;
+  });
+
+  // per-segment trend badges (primary series). If opts.segTrends is supplied (authoritative
+  // spreadsheet trend per segment, e.g. usage which annualizes Jan-Jun 2026) use it so badges
+  // match the table exactly; otherwise compute from the plotted values.
+  let badges='';
+  const p=primary._pts, seg=opts.segTrends;
+  const mkBadge=(pct)=> pct>0 ? ['▲'+pct.toFixed(1)+'%','#059669']
+                       : pct<0 ? ['▼'+Math.abs(pct).toFixed(1)+'%','#e11d48']
+                               : ['→ 0%','#64748b'];
+  for(let k=1;k<p.length;k++){
+    const [x1,y1,v1,i1]=p[k-1], [x2,y2,v2,i2]=p[k];
+    if(i2-i1!==1) continue;                      // only annotate adjacent years
+    const mx=(x1+x2)/2, my=(y1+y2)/2 - 12;
+    let txt, col;
+    if(seg){
+      const t=seg[i1];
+      if(t && t.pct!=null){ [txt,col]=mkBadge(t.pct); }
+      else if(v1===0 && v2>0){ txt='baru'; col='#059669'; }
+      else continue;                             // spreadsheet error (#DIV/0!) -> no badge (table shows n/a)
+    } else if(v1===0){
+      if(v2>0){ txt='baru'; col='#059669'; } else continue;
+    } else { [txt,col]=mkBadge((v2-v1)/Math.abs(v1)*100); }
+    const w=txt.length*5.6+8;
+    badges+=`<g><rect x="${(mx-w/2).toFixed(1)}" y="${(my-8).toFixed(1)}" width="${w.toFixed(1)}" height="14" rx="7" fill="#fff" stroke="${col}" stroke-width="1"/>`+
+            `<text x="${mx.toFixed(1)}" y="${(my+2).toFixed(1)}" font-size="9" font-weight="700" fill="${col}" text-anchor="middle">${txt}</text></g>`;
+  }
+
+  const legend = series.length>1
+    ? '<div class="flex flex-wrap gap-4 mt-1 text-[11px] text-slate-600">'+series.map(s=>`<span class="inline-flex items-center gap-1.5"><span style="width:16px;height:3px;background:${s.color};display:inline-block;border-radius:2px"></span>${esc(s.name)}${s.axis==='right'?' (paksi kanan)':(series.length>1?' (paksi kiri)':'')}</span>`).join('')+'</div>'
+    : '';
+  const caption = opts.caption?`<div class="text-[11px] text-slate-500 mt-0.5">${esc(opts.caption)}</div>`:'';
+  return `<div class="mt-1">
+    <svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" role="img">${grid}${bars}${yl}${yr}${xlabs}${titles}${paths}${badges}</svg>
+    ${legend}${caption}</div>`;
+}
+
+const CHART_LABELS=['2023','2024','2025','Jan-Jun 2026'];
+
+// Scatter/quadrant: unit price (2025) vs usage (2025); bubble size = 2025 spend.
+// Drugs with no 2025 unit price or spend are excluded.
+let SCATTER=null;
+function scatterPoints(){
+  if(SCATTER) return SCATTER;
+  SCATTER=[];
+  DEPARTMENTS.forEach(dep=>dep.drugs.forEach(d=>{
+    const x=d.usage.y2025, y=d.price.p2025, s=d.cost.c2025;
+    if(typeof x==='number'&&isFinite(x)&&typeof y==='number'&&isFinite(y)&&y>0
+       &&typeof s==='number'&&isFinite(s)&&s>0)
+      SCATTER.push({x, y, size:s, label:d.drug, key:d.no+'|'+d.drug});
+  }));
+  return SCATTER;
+}
+function scatterSVG(currentKey){
+  const pts=scatterPoints();
+  if(pts.length<2) return '<div class="mt-1 text-[11px] italic text-slate-400">Tiada data mencukupi untuk plot serakan</div>';
+  const W=680,H=252,padL=64,padR=18,padT=22,padB=50;
+  const plotW=W-padL-padR, plotH=H-padT-padB, baseY=padT+plotH;
+  const med=arr=>{const a=[...arr].sort((p,q)=>p-q);const m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2;};
+  const medX=med(pts.map(p=>p.x)), medY=med(pts.map(p=>p.y));
+  // Rank-based positions so the median lands exactly at the plot centre (cross in the middle).
+  const N=pts.length;
+  [...pts].sort((a,b)=>a.x-b.x).forEach((p,i)=>p._xf=(i+0.5)/N);
+  [...pts].sort((a,b)=>a.y-b.y).forEach((p,i)=>p._yf=(i+0.5)/N);
+  const X=p=>padL+plotW*p._xf, Y=p=>baseY-plotH*p._yf;
+  // bubble radius: area ~ 2025 spend (larger scale so high-cost items stand out)
+  const maxSize=Math.max(...pts.map(p=>p.size))||1;
+  const R=s=>Math.max(2.5, 18*Math.sqrt((s>0?s:0)/maxSize));
+  // axis frame + Rendah/Tinggi direction hints (dots ranked low->high, not a linear scale)
+  let axis=`<line x1="${padL}" y1="${baseY}" x2="${W-padR}" y2="${baseY}" stroke="#cbd5e1"/><line x1="${padL}" y1="${padT}" x2="${padL}" y2="${baseY}" stroke="#cbd5e1"/>`;
+  axis+=`<text x="${padL+4}" y="${(baseY+14).toFixed(1)}" font-size="9.5" fill="#64748b" text-anchor="start">Rendah</text>`+
+        `<text x="${W-padR}" y="${(baseY+14).toFixed(1)}" font-size="9.5" fill="#64748b" text-anchor="end">Tinggi</text>`+
+        `<text x="${padL-5}" y="${baseY.toFixed(1)}" font-size="9.5" fill="#64748b" text-anchor="end">Rendah</text>`+
+        `<text x="${padL-5}" y="${(padT+7).toFixed(1)}" font-size="9.5" fill="#64748b" text-anchor="end">Tinggi</text>`;
+  // MEDIAN guide lines fixed at the centre -> forms a cross (drawn behind the bubbles)
+  const vx=padL+plotW*0.5, hy=baseY-plotH*0.5;
+  // danger-zone tint: Volume Tinggi + Harga Tinggi (top-right) gets a light red wash (drawn first)
+  const quadTint=`<rect x="${vx.toFixed(1)}" y="${padT}" width="${(W-padR-vx).toFixed(1)}" height="${(hy-padT).toFixed(1)}" fill="#fef2f2" opacity="0.85"/>`;
+  const guideLines=`<line x1="${vx.toFixed(1)}" y1="${padT}" x2="${vx.toFixed(1)}" y2="${baseY}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>`+
+               `<line x1="${padL}" y1="${hy.toFixed(1)}" x2="${W-padR}" y2="${hy.toFixed(1)}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>`;
+  // text labels drawn ON TOP of the bubbles, each with a white halo so they stay readable
+  const halo='stroke="#fff" stroke-width="3.2" stroke-linejoin="round" style="paint-order:stroke"';
+  const lt=(x,y,anchor,size,fill,t)=>`<text x="${x}" y="${y}" font-size="${size}" font-weight="700" fill="${fill}" text-anchor="${anchor}" ${halo}>${t}</text>`;
+  const labelsTop=
+    lt((vx+3).toFixed(1),(padT+9).toFixed(1),'start',9.5,'#475569','Median: '+fmtInt(medX)+' SKU')+
+    lt((W-padR).toFixed(1),(hy-3).toFixed(1),'end',9.5,'#475569','Median: RM '+fmtPrice(medY))+
+    lt(padL+4,baseY-5,'start',11,'#334155','Volume Rendah + Harga Rendah')+
+    lt(W-padR-2,baseY-5,'end',11,'#334155','Volume Tinggi + Harga Rendah')+
+    lt(padL+4,padT+9,'start',11,'#334155','Volume Rendah + Harga Tinggi')+
+    lt(W-padR-2,padT+9,'end',11,'#9f1239','Volume Tinggi + Harga Tinggi');
+  // bubbles (others first, biggest behind; current on top)
+  let dots='', cur=null;
+  [...pts].sort((a,b)=>b.size-a.size).forEach(p=>{
+    if(p.key===currentKey){ cur=p; return; }
+    const r=R(p.size);
+    dots+=`<circle cx="${X(p).toFixed(1)}" cy="${Y(p).toFixed(1)}" r="${r.toFixed(1)}" fill="#475569" fill-opacity="0.38" stroke="#334155" stroke-opacity="0.6" stroke-width="0.6"><title>${esc(p.label+' — Guna 2025: '+fmtInt(p.x)+'; Harga/unit: RM '+fmtPrice(p.y)+'; Belanja 2025: '+fmtRM(p.size))}</title></circle>`;
+  });
+  if(cur){ const r=R(cur.size), cxv=X(cur).toFixed(1), cyv=Y(cur).toFixed(1);
+    // outer ring = constant offset so the current drug is findable even when its bubble is small;
+    // the filled bubble keeps its TRUE spend-scaled size.
+    dots+=`<circle cx="${cxv}" cy="${cyv}" r="${(r+3.5).toFixed(1)}" fill="none" stroke="#e11d48" stroke-width="1.4" opacity="0.9"/>`
+         +`<circle cx="${cxv}" cy="${cyv}" r="${r.toFixed(1)}" fill="#e11d48" fill-opacity="0.85" stroke="#fff" stroke-width="1.1"><title>${esc(cur.label+' — Guna 2025: '+fmtInt(cur.x)+'; Harga/unit: RM '+fmtPrice(cur.y)+'; Belanja 2025: '+fmtRM(cur.size))}</title></circle>`; }
+  // axis titles
+  const titles=`<text x="${padL+plotW/2}" y="${H-5}" font-size="12" font-weight="700" fill="#475569" text-anchor="middle">Guna 2025 (SKU)</text>`+
+               `<text x="13" y="${(padT+baseY)/2}" font-size="12" font-weight="700" fill="#475569" text-anchor="middle" transform="rotate(-90 13 ${(padT+baseY)/2})">Harga Seunit 2025 (RM)</text>`;
+  const note=cur?'':'<div class="text-[11px] text-slate-500 mt-0.5">Ubat ini tiada harga/belanja 2025 &mdash; tidak diplot (titik merah tidak dipaparkan).</div>';
+  return `<div class="mt-1">
+    <svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" role="img">${quadTint}${axis}${guideLines}${dots}${labelsTop}${titles}</svg>
+    <div class="text-[11px] text-slate-500 mt-0.5">Setiap titik = satu ubat RESPIRATORY (${pts.length} ubat). Paksi disusun ikut pangkat (rendah&rarr;tinggi); <b>saiz bulatan = belanja 2025</b>. Garis putus = median (guna &asymp; ${esc(fmtInt(medX))} SKU; harga &asymp; RM ${esc(fmtPrice(medY))}). Titik merah = ubat semasa.</div>${note}</div>`;
+}
+
+// 1F: was the 2024->2025 cost change driven by price or by volume?
+// Bennet (mid-point) decomposition of Delta(p*u): priceEff + volEff sums exactly to the p*u delta.
+function costDecomp(d){
+  const p24=d.price.p2024, p25=d.price.p2025, u24=d.usage.y2024, u25=d.usage.y2025;
+  const ok=v=>typeof v==='number'&&isFinite(v);
+  if(!ok(p24)||!ok(p25)||!ok(u24)||!ok(u25)) return '';
+  const priceEff=(p25-p24)*(u24+u25)/2, volEff=(u25-u24)*(p24+p25)/2, delta=priceEff+volEff;
+  const ap=Math.abs(priceEff), av=Math.abs(volEff);
+  if(ap<1&&av<1) return '';                       // no material change
+  const sgn=v=>(v>=0?'+':'-')+fmtRM(Math.abs(v));
+  const driver = (Math.min(ap,av)/Math.max(ap,av)>0.8) ? 'kedua-dua (volum &amp; harga)'
+               : (av>ap ? 'volum' : 'harga');
+  return `<div class="mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600 leading-relaxed">
+      Perubahan kos 2024&rarr;2025: <b>${sgn(delta)}</b> &mdash; didorong oleh <b>${driver}</b>
+      <span class="text-slate-400">(kesan volum ${sgn(volEff)}; kesan harga ${sgn(priceEff)}; berdasarkan harga &times; guna)</span>
+    </div>`;
+}
+// small up/down marker when the unit price moved vs the previous year
+function priceDelta(cur,prev){
+  const ok=v=>typeof v==='number'&&isFinite(v);
+  if(!ok(cur)||!ok(prev)||cur===prev) return '';
+  return cur>prev ? ' <span class="text-rose-600 text-[10px]" title="Harga naik">&#9650;</span>'
+                  : ' <span class="text-emerald-600 text-[10px]" title="Harga turun">&#9660;</span>';
+}
+
+function subPanel(d){
+  // Combo chart: Volume (SKU) line on the left axis + Jumlah Kos (RM) bars on the right axis.
+  const trendChart = lineChartSVG(
+    [{name:'Guna (SKU)', type:'line', color:'#0284c7', primary:true, axis:'left',
+      values:[d.usage.y2023,d.usage.y2024,d.usage.y2025,d.usage.h2026], fmt:fmtInt},
+     {name:'Jumlah Kos (RM)', type:'bar', color:'#0d9488', axis:'right',
+      values:[d.cost.c2023,d.cost.c2024,d.cost.c2025,d.cost.c2026h1], fmt:fmtRM}],
+    {labels:CHART_LABELS, segTrends:[d.trend.t2324,d.trend.t2425,d.trend.t2526],
+     xTitle:'Tahun', yTitleLeft:'Volume (SKU)', yTitleRight:'Jumlah Kos (RM)',
+     caption:'2026 = separuh tahun (Jan-Jun). Garis = Volume (paksi kiri), bar = Jumlah Kos (paksi kanan). Badge = trend penggunaan.'});
+  // Scatter/quadrant: this drug (red) vs all drugs in this discipline, spend vs usage 2025.
+  const scatterChart = scatterSVG(d.no+'|'+d.drug);
+  const vol=`
+    <div class="pillar-card p-3">
+      <div class="text-[11px] uppercase tracking-wide font-bold text-sky-700 mb-2">Kriteria Penilaian 1 &middot; Volume (SKU)</div>
+      <table class="w-full text-xs">
+        <thead><tr class="text-slate-400 text-left">
+          <th class="py-1">2023</th><th>2024</th><th class="text-center">&#8594;</th><th>2025</th>
+          <th class="text-center">&#8594;</th><th>Jan&ndash;Jun 2026</th><th class="text-center">&#8594;</th><th class="text-right">Jumlah</th>
+        </tr></thead>
+        <tbody><tr class="num">
+          <td class="py-1">${d.usage.y2023!=null?fmtInt(d.usage.y2023):esc(d.usage.raw2023)}</td>
+          <td>${d.usage.y2024!=null?fmtInt(d.usage.y2024):esc(d.usage.raw2024)}</td>
+          <td class="text-center">${trendHTML(d.trend.t2324)}</td>
+          <td>${d.usage.y2025!=null?fmtInt(d.usage.y2025):esc(d.usage.raw2025)}</td>
+          <td class="text-center">${trendHTML(d.trend.t2425)}</td>
+          <td>${d.usage.h2026!=null?fmtInt(d.usage.h2026):esc(d.usage.raw2026)}</td>
+          <td class="text-center">${trendHTML(d.trend.t2526)}</td>
+          <td class="text-right font-semibold">${d.usage.total!=null?fmtInt(d.usage.total):esc(d.usage.rawtotal)}</td>
+        </tr></tbody>
+      </table>
+    </div>`;
+
+  // Pillar 2 - Cost
+  const cost=`
+    <div class="pillar-card p-3">
+      <div class="text-[11px] uppercase tracking-wide font-bold text-teal-700 mb-2">Kriteria Penilaian 2 &middot; Kos &amp; Harga</div>
+      <table class="w-full text-xs">
+        <thead><tr class="text-slate-400 text-left">
+          <th class="py-1">Tahun</th><th class="text-right">Harga/SKU (RM)</th><th class="text-right">Jumlah Kos (RM)</th>
+        </tr></thead>
+        <tbody class="num">
+          <tr><td class="py-0.5">2023</td><td class="text-right">${fmtPrice(d.price.p2023)||esc(d.price.raw2023)}</td><td class="text-right">${fmtRM(d.cost.c2023)}</td></tr>
+          <tr><td class="py-0.5">2024</td><td class="text-right">${fmtPrice(d.price.p2024)||esc(d.price.raw2024)}${priceDelta(d.price.p2024,d.price.p2023)}</td><td class="text-right">${fmtRM(d.cost.c2024)}</td></tr>
+          <tr><td class="py-0.5">2025</td><td class="text-right">${fmtPrice(d.price.p2025)||esc(d.price.raw2025)}${priceDelta(d.price.p2025,d.price.p2024)}</td><td class="text-right">${fmtRM(d.cost.c2025)}</td></tr>
+          <tr><td class="py-0.5">Jan&ndash;Jun 2026</td><td class="text-right">${fmtPrice(d.price.p2026)||esc(d.price.raw2026)}${priceDelta(d.price.p2026,d.price.p2025)}</td><td class="text-right">${fmtRM(d.cost.c2026h1)}</td></tr>
+          <tr class="border-t border-slate-200 font-semibold"><td class="py-1">Jumlah</td><td></td><td class="text-right">${d.cost.total!=null?fmtRM(d.cost.total):esc(d.cost.rawtotal)}</td></tr>
+        </tbody>
+      </table>
+      ${costDecomp(d)}
+      <div class="mt-2 text-xs">Status: ${applBadge(d)}</div>
+    </div>`;
+
+  // Pillar 3 - Governance
+  const gov=`
+    <div class="pillar-card p-3">
+      <div class="text-[11px] uppercase tracking-wide font-bold text-violet-700 mb-2">Kriteria Penilaian 3 &middot; Tadbir Urus / Nota</div>
+      <dl class="text-xs space-y-1.5">
+        <div class="flex gap-2"><dt class="w-28 shrink-0 text-slate-400">Kategori FUKKM</dt><dd>${catBadge(d)}</dd></div>
+        <div class="flex gap-2"><dt class="w-28 shrink-0 text-slate-400">Kuota</dt><dd>${esc(d.quota)||'<span class="text-slate-300">&ndash;</span>'}</dd></div>
+        <div class="flex gap-2"><dt class="w-28 shrink-0 text-slate-400">Disiplin lain</dt><dd>${nl2br(d.gov.otherDisc)||'<span class="text-slate-300">&ndash;</span>'}</dd></div>
+        <div class="flex gap-2"><dt class="w-28 shrink-0 text-slate-400">Justifikasi LO</dt><dd>${nl2br(d.gov.justLo)||'<span class="text-slate-300">&ndash;</span>'}</dd></div>
+        <div class="flex gap-2"><dt class="w-28 shrink-0 text-slate-400">Catatan</dt><dd>${nl2br(d.gov.remark)||'<span class="text-slate-300">&ndash;</span>'}</dd></div>
+      </dl>
+    </div>`;
+
+  // Full raw dump (lossless) - every column B..AC
+  const rawRows = Object.keys(LABELS).map(k=>{
+    const v=d.raw[k];
+    if(v==null||v==="") return "";
+    return `<tr><td class="py-0.5 pr-3 text-slate-400 whitespace-nowrap">${esc(LABELS[k])}</td><td class="py-0.5">${nl2br(v)}</td></tr>`;
+  }).join("");
+
+  const flags = d.flags.length ? `
+    <div class="md:col-span-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+      &#9888; ${d.flags.map(esc).join("<br>&#9888; ")}
+    </div>` : "";
+
+  return `
+    <div class="bg-slate-50/70 border-t border-slate-200 px-4 py-4">
+      <div class="grid md:grid-cols-3 gap-3">${vol}${cost}${gov}${flags}</div>
+      <div class="chart-grid">
+        <div class="pillar-card p-4">
+          <div class="chart-title text-slate-700">Trend Volume (SKU) &amp; Jumlah Kos (RM)</div>
+          ${trendChart}
+        </div>
+        <div class="pillar-card p-4">
+          <div class="chart-title text-slate-700">Harga Seunit vs Guna (2025) &mdash; Kuadran &middot; saiz = belanja</div>
+          ${scatterChart}
+        </div>
+      </div>
+      <details class="mt-3">
+        <summary class="text-xs text-slate-500 hover:text-slate-700 select-none">&#9660; Semua medan mentah (lossless, lajur B&ndash;AC)</summary>
+        <table class="w-full text-xs mt-2 bg-white rounded-lg border border-slate-200 p-2"><tbody>${rawRows}</tbody></table>
+      </details>
+    </div>`;
+}
+
+function drugRow(d, gi, di){
+  const flag = d.flags.length ? ' <span title="Isu kualiti data" class="text-amber-500">&#9888;</span>' : '';
+  return `
+    <tbody class="border-b border-slate-100">
+      <tr class="drow cursor-pointer">
+        <td class="px-3 py-2 text-slate-400 num text-xs">${esc(d.no)}</td>
+        <td class="px-2 py-2 text-xs text-slate-500 whitespace-nowrap">${esc(d.status)}</td>
+        <td class="px-2 py-2 text-xs text-slate-500 whitespace-nowrap">${highlight(d.pic)}</td>
+        <td class="px-3 py-2 text-sm font-medium text-slate-800">${highlight(d.drug)}${flag}</td>
+        <td class="px-2 py-2">${catBadge(d)}</td>
+        <td class="px-2 py-2 text-xs num whitespace-nowrap">${esc(d.quota)||'<span class="text-slate-300">&ndash;</span>'}</td>
+        <td class="px-2 py-2 text-right text-sm num">${d.usage.y2025!=null?fmtInt(d.usage.y2025):esc(d.usage.raw2025)}</td>
+        <td class="px-2 py-2 text-right text-sm num">${d.usage.h2026!=null?fmtInt(d.usage.h2026):esc(d.usage.raw2026)}</td>
+        <td class="px-2 py-2 text-right text-sm">${trendHTML(d.trend.t2526)}</td>
+        <td class="px-2 py-2 text-right text-sm num">${fmtPrice(d.price.p2026)||esc(d.price.raw2026)}</td>
+        <td class="px-2 py-2 text-center">${applBadge(d)}</td>
+        <td class="px-2 py-2 text-right text-sm num font-semibold text-slate-700">${d.cost.total!=null?fmtRM(d.cost.total):''}</td>
+        <td class="px-2 py-2 text-slate-300 text-center toggle">&#9656;</td>
+      </tr>
+      <tr class="expand hidden" data-g="${gi}" data-d="${di}"><td colspan="13" class="p-0"></td></tr>
+    </tbody>`;
+}
+
+function deptSection(dep, gi){
+  const rows = dep.drugs.map((d,di)=> matches(d) ? drugRow(d, gi, di) : "").filter(Boolean);
+  if(!rows.length) return "";
+  const shown = rows.length, total = dep.drugs.length;
+  return `
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="px-5 py-3 bg-slate-800 text-white flex items-center justify-between">
+        <h2 class="font-semibold tracking-tight">${esc(dep.name)}</h2>
+        <span class="text-xs text-slate-300">${shown} / ${total} ubat</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr class="text-[11px] uppercase tracking-wide text-slate-500 bg-slate-50 border-b border-slate-200">
+              <th class="px-3 py-2 text-left font-semibold">No</th>
+              <th class="px-2 py-2 text-left font-semibold">Sumber</th>
+              <th class="px-2 py-2 text-left font-semibold">PIC</th>
+              <th class="px-3 py-2 text-left font-semibold">Nama Ubat</th>
+              <th class="px-2 py-2 text-left font-semibold">Kat</th>
+              <th class="px-2 py-2 text-left font-semibold">Kuota</th>
+              <th class="px-2 py-2 text-right font-semibold">Guna 2025</th>
+              <th class="px-2 py-2 text-right font-semibold">Jan&ndash;Jun 26</th>
+              <th class="px-2 py-2 text-right font-semibold">Trend 25&rarr;26</th>
+              <th class="px-2 py-2 text-right font-semibold">Harga 26</th>
+              <th class="px-2 py-2 text-center font-semibold">APPL</th>
+              <th class="px-2 py-2 text-right font-semibold">Jumlah Kos</th>
+              <th class="px-2 py-2"></th>
+            </tr>
+          </thead>
+          ${rows.join("")}
+        </table>
+      </div>
+    </section>`;
+}
+
+// ---- lazy sub-panel rendering: build subPanel (and its charts) only on first expand ----
+function panelDrug(ex){ return DEPARTMENTS[+ex.dataset.g].drugs[+ex.dataset.d]; }
+function ensureRendered(ex){
+  if(!ex.dataset.done){ ex.querySelector('td').innerHTML = subPanel(panelDrug(ex)); ex.dataset.done='1'; }
+}
+let openRow=null;                                  // accordion: only one drug open at a time
+function openPanel(tr){
+  if(openRow && openRow!==tr) closePanel(openRow);  // auto-collapse the previously open row
+  const ex=tr.parentElement.querySelector('.expand');
+  ensureRendered(ex);
+  ex.classList.remove('hidden');
+  const t=tr.querySelector('.toggle'); if(t) t.innerHTML='&#9662;';
+  openRow=tr;
+}
+function closePanel(tr){
+  const ex=tr.parentElement.querySelector('.expand');
+  ex.classList.add('hidden');
+  const t=tr.querySelector('.toggle'); if(t) t.innerHTML='&#9656;';
+  if(openRow===tr) openRow=null;
+}
+
+function render(){
+  const list = state.dept==="ALL" ? DEPARTMENTS.map((d,i)=>[d,i]) : [[DEPARTMENTS[+state.dept], +state.dept]];
+  const html = list.map(([d,i])=>deptSection(d,i)).filter(Boolean).join("");
+  const el=document.getElementById('content');
+  el.innerHTML = html || `<div class="text-center text-slate-400 py-16">Tiada ubat sepadan dengan penapis semasa.</div>`;
+  el.querySelectorAll('tr.drow').forEach(tr=>{
+    tr.onclick=()=>{
+      const ex=tr.parentElement.querySelector('.expand');
+      if(ex.classList.contains('hidden')) openPanel(tr); else closePanel(tr);
+    };
+  });
+}
+
+document.getElementById('search').addEventListener('input',e=>{state.q=e.target.value.trim().toLowerCase();render();});
+document.getElementById('collapseAll').onclick=()=>document.querySelectorAll('tr.drow').forEach(closePanel);
+
+// ---------------- Full combined table (ABC) ----------------
+const shortDept=n=>String(n||'').replace(/^.*\(/,'').replace(/\)$/,'');
+let FULL=null;
+function buildFull(){
+  if(FULL) return FULL;
+  FULL=DEPARTMENTS.flatMap(dep=>dep.drugs.map(d=>Object.assign({}, d, {dept:dep.name})));
+  return FULL;
+}
+// ABC cost = sum of the selected year range; recomputed whenever the slider moves.
+const YKEYS=['c2023','c2024','c2025','c2026h1'], YLABS=['2023','2024','2025','Jan-Jun 2026'];
+let yrFrom=2, yrTo=2;                                  // default: 2025 - 2025
+function yrRangeLabel(){ return yrFrom===yrTo ? YLABS[yrFrom] : YLABS[yrFrom]+'–'+YLABS[yrTo]; }
+function computeKos(){
+  const rows=buildFull();
+  rows.forEach(d=>{ let s=0; for(let i=yrFrom;i<=yrTo;i++){ const v=d.cost[YKEYS[i]]; if(typeof v==='number'&&isFinite(v)) s+=v; } d._kos=s; });
+  const total=rows.reduce((a,d)=>a+d._kos,0);
+  [...rows].sort((a,b)=>b._kos-a._kos).reduce((run,d)=>{run+=d._kos; d._cum=total?run/total*100:0; return run;},0);
+  // ABC class from cumulative cost share (pharmacy: A <=70%, B <=90%, C otherwise)
+  rows.forEach(d=>d._abc = d._cum<=70?'A':(d._cum<=90?'B':'C'));
+}
+function abcBg(k){ return k==='A'?'bg-rose-100 text-rose-800':k==='B'?'bg-amber-100 text-amber-800':'bg-emerald-100 text-emerald-800'; }
+const FCOLS=[
+  {key:'no',   label:'#',               type:'index', align:'text-left'},
+  {key:'dept', label:'Kepakaran',       type:'text', align:'text-left',   get:d=>shortDept(d.dept),        fmt:d=>`<span class="text-xs text-slate-500">${esc(shortDept(d.dept))}</span>`},
+  {key:'drug', label:'Nama Ubat',       type:'text', align:'text-left',   get:d=>d.drug,                   fmt:d=>`<span class="font-medium text-slate-800">${esc(d.drug)}</span>`},
+  {key:'cat',  label:'Kat',             type:'text', align:'text-left',   get:d=>d.catKey,                 fmt:d=>catBadge(d)},
+  {key:'pic',  label:'PIC',             type:'text', align:'text-left',   get:d=>d.pic,                    fmt:d=>`<span class="text-xs text-slate-500">${esc(d.pic)}</span>`},
+  {key:'u25',  label:'Guna 2025',       type:'num',  align:'text-right',  get:d=>d.usage.y2025,            fmt:d=>d.usage.y2025!=null?fmtInt(d.usage.y2025):'<span class="text-slate-300">&ndash;</span>'},
+  {key:'appl', label:'APPL',            type:'text', align:'text-center', get:d=>d.appl.label,             fmt:d=>applBadge(d)},
+  {key:'kos',  label:'Jumlah Kos (RM)', type:'num',  align:'text-right',  get:d=>d._kos,                   fmt:d=>`<span class="font-semibold text-slate-700">${fmtRM(d._kos)}</span>`},
+  {key:'cum',  label:'Kumulatif % Kos', type:'num',  align:'text-right',  get:d=>d._cum,                   fmt:d=>`<span class="num text-slate-600">${d._cum.toFixed(1)}%</span>`},
+  {key:'abc',  label:'Kelas ABC',       type:'text', align:'text-center', get:d=>d._abc},
+];
+let sortState={key:'kos', dir:'desc'};
+// rows for the current year range + sort order (shared by the table render and the CSV export)
+function currentRows(){
+  computeKos();
+  const rows=buildFull().slice();
+  const col=FCOLS.find(c=>c.key===sortState.key);
+  rows.sort((a,b)=>{
+    let va=col.get(a), vb=col.get(b);
+    if(col.type==='num'){ va=(typeof va==='number'&&isFinite(va))?va:-Infinity; vb=(typeof vb==='number'&&isFinite(vb))?vb:-Infinity; return va-vb; }
+    va=(va==null?'':String(va)).toLowerCase(); vb=(vb==null?'':String(vb)).toLowerCase(); return va<vb?-1:(va>vb?1:0);
+  });
+  if(sortState.dir==='desc') rows.reverse();
+  return rows;
+}
+function renderFullTable(){
+  const rows=currentRows();
+  const thead='<thead><tr class="text-[11px] uppercase text-slate-500 border-b border-slate-200">'+
+    FCOLS.map(c=>{
+      if(c.type==='index') return `<th class="px-2 py-2 ${c.align} font-semibold whitespace-nowrap text-slate-400">${esc(c.label)}</th>`;
+      const a=sortState.key===c.key; const ar=a?(sortState.dir==='desc'?' &#9660;':' &#9650;'):'';
+      const lbl=c.key==='kos' ? ('Kos '+yrRangeLabel()+' (RM)') : c.label;
+      return `<th data-k="${c.key}" class="px-2 py-2 ${c.align} font-semibold cursor-pointer select-none hover:text-slate-800 whitespace-nowrap ${a?'text-sky-700':''}">${esc(lbl)}${ar}</th>`;}).join('')+'</tr></thead>';
+  const tbody='<tbody>'+rows.map((d,i)=>'<tr class="border-b border-slate-100 hover:bg-slate-50">'+
+    FCOLS.map(c=> c.type==='index'
+      ? `<td class="px-2 py-1.5 ${c.align} num text-slate-400">${i+1}</td>`
+      : c.key==='abc'
+      ? `<td class="px-2 py-1.5 text-center font-bold ${abcBg(d._abc)}">${d._abc}</td>`
+      : `<td class="px-2 py-1.5 ${c.align} ${c.type==='num'?'num':''}">${c.fmt(d)}</td>`).join('')+'</tr>').join('')+'</tbody>';
+  const t=document.getElementById('fullTable'); t.innerHTML=thead+tbody;
+  t.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k;
+    if(sortState.key===k) sortState.dir=(sortState.dir==='desc'?'asc':'desc');
+    else { sortState.key=k; sortState.dir=(FCOLS.find(c=>c.key===k).type==='num')?'desc':'asc'; }
+    renderFullTable();
+  });
+  document.getElementById('fullTableCount').textContent=rows.length+' ubat';
+}
+function showView(which){
+  const dept=which==='dept';
+  document.getElementById('view-dept').classList.toggle('hidden',!dept);
+  document.getElementById('view-table').classList.toggle('hidden',dept);
+  document.getElementById('tab-dept').classList.toggle('tab-active',dept);
+  document.getElementById('tab-table').classList.toggle('tab-active',!dept);
+  if(!dept) renderFullTable();
+}
+document.getElementById('tab-dept').onclick=()=>showView('dept');
+document.getElementById('tab-table').onclick=()=>showView('table');
+
+// ---- ABC year-range slider ----
+(function(){
+  const fromEl=document.getElementById('yrFrom'), toEl=document.getElementById('yrTo'), out=document.getElementById('yrReadout');
+  function apply(){ yrFrom=+fromEl.value; yrTo=+toEl.value; out.textContent=yrRangeLabel(); renderFullTable(); }
+  fromEl.addEventListener('input',()=>{ if(+fromEl.value>+toEl.value) toEl.value=fromEl.value; apply(); });
+  toEl.addEventListener('input',()=>{ if(+toEl.value<+fromEl.value) fromEl.value=toEl.value; apply(); });
+  out.textContent=yrRangeLabel();          // initialise readout (default 2025)
+})();
+
+// ---- ABC table CSV export (current year range + sort order) ----
+function exportCsv(){
+  const rows=currentRows();
+  const q=v=>{ v=(v==null?'':String(v)); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  const head=FCOLS.map(c=>c.key==='kos' ? 'Kos '+yrRangeLabel()+' (RM)' : c.label);
+  const lines=[head.map(q).join(',')];
+  rows.forEach((d,i)=>{
+    lines.push(FCOLS.map(c=>{
+      if(c.type==='index') return i+1;
+      let v=c.get(d);
+      if(c.key==='kos') v=(typeof v==='number'&&isFinite(v))?v.toFixed(2):'';
+      if(c.key==='cum') v=(typeof v==='number'&&isFinite(v))?v.toFixed(1):'';
+      return q(v);
+    }).join(','));
+  });
+  // UTF-8 BOM so Excel opens the file with correct encoding
+  const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='abc_analisis_respiratory_'+yrRangeLabel().replace(/[^0-9A-Za-z-]+/g,'_')+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+document.getElementById('exportCsv').onclick=exportCsv;
+
+statCards(); buildChips(); deptSelect(); render(); showView('dept');
+</script>
+</body>
+</html>
