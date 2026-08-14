@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Semakan Ubat Berkuota (CARDIOLOGY) — Google Sheet, Harga vs Guna</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter','system-ui','sans-serif'] } } } };
+</script>
+<style>
+  html{-webkit-text-size-adjust:100%;}
+  body{background:#f1f5f9;
+       font-family:'Inter','Segoe UI',system-ui,sans-serif;
+       -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+       text-rendering:optimizeLegibility;
+       font-feature-settings:'cv11','ss01';
+       letter-spacing:-0.004em;line-height:1.5;color:#1e293b;}
+  h1,h2,.chart-title{letter-spacing:-0.01em;}
+  table{font-variant-numeric:tabular-nums;}
+  .pillar-card{border:1px solid #e2e8f0;border-radius:.6rem;background:#fff;}
+  .chart-title{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:.4rem;color:#334155;}
+  .chart-grid{display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1rem;}
+  @media(min-width:900px){.chart-grid{grid-template-columns:1fr 1fr;}}
+  details>summary{list-style:none;cursor:pointer;}
+  details>summary::-webkit-details-marker{display:none;}
+  .chip{transition:all .12s ease;font-variant-numeric:tabular-nums;}
+  .chip-off{opacity:.45;}
+  tr.drow:hover{background:#f8fafc;}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;}
+  /* SVG chart text: crisp, legible, non-selectable */
+  svg text{font-family:'Inter','Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  .sticky-th{position:sticky;top:0;z-index:5;}
+  mark{background:#fde68a;padding:0 .1em;border-radius:2px;}
+  .tab-btn{color:#475569;transition:all .12s ease;}
+  .tab-btn.tab-active{background:#0f766e;color:#fff;}
+  .yr-slider{width:120px;accent-color:#0f766e;cursor:pointer;vertical-align:middle;}
+  #fullTable thead th{position:sticky;top:0;background:#f8fafc;z-index:3;}
+  /* Print / PDF: hide interactive controls, keep badge/ABC colours, paginate tables cleanly */
+  @media print{
+    body{background:#fff;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .no-print{display:none !important;}
+    .shadow-sm,.shadow-lg{box-shadow:none !important;}
+    tr{page-break-inside:avoid;}
+    thead{display:table-header-group;}
+    #fullTable thead th{position:static;}
+  }
+</style>
+</head>
+<body class="font-sans text-slate-800">
+
+<header class="bg-gradient-to-r from-sky-800 to-teal-700 text-white shadow-lg">
+  <div class="max-w-[1500px] mx-auto px-6 py-6">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight">Dashboard Semakan Ubat Berkuota &mdash; HSIS</h1>
+        <p class="text-sky-100 text-sm mt-1">Unit Farmasi OP/IP 2026 &middot; Disiplin <span class="font-semibold">CARDIOLOGY</span> &middot; Alat sokongan perbincangan Jawatankuasa LO / PRIC</p>
+      </div>
+      <div class="text-right text-xs text-sky-100 leading-relaxed">
+        <div>Sumber: <span class="font-semibold">Google Sheet (langsung)</span></div>
+        <div>Data guna 2023&ndash;2025 + Jan&ndash;Jun 2026</div>
+        <div>Dijana (snapshot): 14/08/2026 11:37</div>
+        <div class="no-print mt-2 flex gap-2 justify-end">
+          <a href="index.html" class="text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 font-semibold text-white">&larr; Semua disiplin</a>
+          <button onclick="window.print()" class="text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 font-semibold text-white">&#128424;&#65039; Cetak / PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3-pillar legend -->
+    <div class="grid md:grid-cols-3 gap-3 mt-5">
+      <div class="bg-white/10 rounded-lg px-4 py-3">
+        <div class="text-xs uppercase tracking-wide text-sky-200 font-semibold">Kriteria Penilaian 1 &middot; Volume</div>
+        <div class="text-sm mt-0.5">Corak penggunaan 3 tahun + trend Jan&ndash;Jun 2026 (% naik/turun).</div>
+      </div>
+      <div class="bg-white/10 rounded-lg px-4 py-3">
+        <div class="text-xs uppercase tracking-wide text-sky-200 font-semibold">Kriteria Penilaian 2 &middot; Kos</div>
+        <div class="text-sm mt-0.5">Harga seunit setiap tahun &amp; status <span class="font-semibold">APPL / NON-APPL</span>.</div>
+      </div>
+      <div class="bg-white/10 rounded-lg px-4 py-3">
+        <div class="text-xs uppercase tracking-wide text-sky-200 font-semibold">Kriteria Penilaian 3 &middot; Tadbir Urus</div>
+        <div class="text-sm mt-0.5">Kategori FUKKM, disiplin lain, justifikasi LO &amp; catatan.</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Stat cards -->
+<div class="max-w-[1500px] mx-auto px-6 mt-6">
+  <div id="statCards" class="grid grid-cols-2 md:grid-cols-6 gap-3"></div>
+</div>
+
+<!-- View tabs -->
+<div class="no-print max-w-[1500px] mx-auto px-6 mt-6">
+  <div class="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm gap-1">
+    <button id="tab-dept" class="tab-btn px-4 py-2 text-sm font-semibold rounded-md">Paparan Kepakaran</button>
+    <button id="tab-table" class="tab-btn px-4 py-2 text-sm font-semibold rounded-md">Jadual Penuh (ABC)</button>
+  </div>
+</div>
+
+<div id="view-dept">
+<!-- Controls -->
+<div class="no-print max-w-[1500px] mx-auto px-6 mt-6">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+    <div class="flex flex-col lg:flex-row lg:items-center gap-3">
+      <div class="flex-1">
+        <input id="search" type="search" placeholder="Cari nama ubat, PIC, justifikasi, catatan..."
+          class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none">
+      </div>
+      <div class="flex items-center gap-2 text-sm">
+        <label class="text-slate-500">Kepakaran:</label>
+        <select id="deptFilter" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none"></select>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="collapseAll" class="text-sm px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200">Tutup semua</button>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-4 mt-4">
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs font-semibold text-slate-500 mr-1">KATEGORI:</span>
+        <div id="catChips" class="flex flex-wrap gap-1.5"></div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs font-semibold text-slate-500 mr-1">SUMBER:</span>
+        <div id="statusChips" class="flex flex-wrap gap-1.5"></div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs font-semibold text-slate-500 mr-1">APPL:</span>
+        <div id="applChips" class="flex flex-wrap gap-1.5"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main id="content" class="max-w-[1500px] mx-auto px-6 py-6 space-y-8"></main>
+</div><!-- /view-dept -->
+
+<div id="view-table" class="hidden max-w-[1500px] mx-auto px-6 py-6">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="px-5 py-3 bg-slate-800 text-white flex items-center justify-between gap-4">
+      <div>
+        <h2 class="font-semibold tracking-tight">Jadual Penuh Semua Ubat &middot; Analisis ABC</h2>
+        <div class="text-[11px] text-slate-300 font-normal">Klik tajuk lajur untuk isih. Guna slider untuk pilih julat tahun kos. Kelas ABC: A &le;70% kos terkumpul, B &le;90%, C selebihnya.</div>
+      </div>
+      <span class="text-xs text-slate-300 whitespace-nowrap" id="fullTableCount"></span>
+    </div>
+    <div class="no-print px-5 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+      <span class="font-semibold text-slate-600">Julat tahun kos:</span>
+      <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-9">Dari</span><input id="yrFrom" type="range" min="0" max="3" step="1" value="2" class="yr-slider"></div>
+      <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-9">Hingga</span><input id="yrTo" type="range" min="0" max="3" step="1" value="2" class="yr-slider"></div>
+      <span id="yrReadout" class="font-bold text-teal-700"></span>
+      <span class="text-[11px] text-slate-400">Pilihan: 2023 &middot; 2024 &middot; 2025 &middot; Jan&ndash;Jun 2026</span>
+      <button id="exportCsv" class="ml-auto text-xs px-3 py-1.5 rounded-lg bg-teal-700 text-white hover:bg-teal-800 font-semibold whitespace-nowrap">&#11015;&#65039; Eksport CSV</button>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-sm" id="fullTable"></table>
+    </div>
+  </div>
+</div>
+
+<footer class="no-print max-w-[1500px] mx-auto px-6 pb-10 text-xs text-slate-400">
+  Dijana secara automatik daripada hamparan sumber. Semua nilai dipapar seperti dalam fail asal (lossless).
+  Sel yang bertanda &#9888; menunjukkan isu kualiti data untuk pengesahan semula oleh jawatankuasa.
+</footer>
+
+<script>
+const DEPARTMENTS = [{"name": "CARDIOLOGY", "drugs": [{"no": "1", "status": "PUB-OP", "pic": "AIN JAZILAH", "drug": "Bosentan 125mg Tab", "cat": "A*", "catKey": "A*", "quota": "87/150", "usage": {"y2023": 3610.0, "y2024": 9848.0, "y2025": 31764.0, "h2026": 29366.0, "total": 74588.0, "raw2023": "3610", "raw2024": "9848", "raw2025": "31764", "raw2026": "29366", "rawtotal": "74588"}, "trend": {"t2324": {"pct": 172.8}, "t2425": {"pct": 222.5}, "t2526": {"pct": 84.9}}, "price": {"p2023": 53.3, "p2024": 53.3, "p2025": 28.8, "p2026": 28.8, "raw2023": "53.3", "raw2024": "53.3", "raw2025": "28.8", "raw2026": "28.8"}, "cost": {"c2023": 192413.0, "c2024": 524898.4, "c2025": 914803.2, "c2026h1": 845740.8, "total": 2477855.4, "rawtotal": "2477855.4"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "-", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "1", "status": "PUB-OP", "pic": "AIN JAZILAH", "drug": "Bosentan 125mg Tab", "cat": "A*", "quota": "87/150", "u2023": "3610", "u2024": "9848", "t2324": "172.8%", "u2025": "31764", "t2425": "222.54%", "u2026h1": "29366", "t2526": "84.90%", "usage_total": "74588", "p2023": "53.3", "c2023": "192413", "p2024": "53.3", "c2024": "524898.4", "p2025": "28.8", "c2025": "914803.2", "p2026": "28.8", "c2026h1": "845740.8", "cost_total": "2477855.4", "appl": "", "nonappl": "1", "other_disc": "-", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "2", "status": "PUB-OP", "pic": "FARAH AINA", "drug": "Dabigatran Etexilate 110mg Hard Capsule", "cat": "A*", "catKey": "A*", "quota": "800/600", "usage": {"y2023": 29225.0, "y2024": 47757.0, "y2025": 105071.0, "h2026": 56576.0, "total": 238629.0, "raw2023": "29225", "raw2024": "47757", "raw2025": "105071", "raw2026": "56576", "rawtotal": "238629"}, "trend": {"t2324": {"pct": 63.4}, "t2425": {"pct": 120.0}, "t2526": {"pct": 7.7}}, "price": {"p2023": 3.416, "p2024": 3.726, "p2025": 3.726, "p2026": 3.726, "raw2023": "3.416", "raw2024": "3.726", "raw2025": "3.726", "raw2026": "3.726"}, "cost": {"c2023": 99832.6, "c2024": 177942.582, "c2025": 391494.546, "c2026h1": 210802.176, "total": 880071.904, "rawtotal": "880071.904"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "Medical - for existing patients only", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "2", "status": "", "pic": "FARAH AINA", "drug": "Dabigatran Etexilate 110mg Hard Capsule", "cat": "A*", "quota": "800/600", "u2023": "29225", "u2024": "47757", "t2324": "63.4%", "u2025": "105071", "t2425": "120.01%", "u2026h1": "56576", "t2526": "7.69%", "usage_total": "238629", "p2023": "3.416", "c2023": "99832.6", "p2024": "3.726", "c2024": "177942.582", "p2025": "3.726", "c2025": "391494.546", "p2026": "3.726", "c2026h1": "210802.176", "cost_total": "880071.904", "appl": "1", "nonappl": "", "other_disc": "Medical - for existing patients only", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "3", "status": "PUB-OP", "pic": "DARWISYAH", "drug": "Dabigatran Etexilate 150mg Hard Capsule", "cat": "A*", "catKey": "A*", "quota": "800/600", "usage": {"y2023": 106825.0, "y2024": 148074.0, "y2025": 326311.0, "h2026": 169719.0, "total": 750929.0, "raw2023": "106825", "raw2024": "148074", "raw2025": "326311", "raw2026": "169719", "rawtotal": "750929"}, "trend": {"t2324": {"pct": 38.6}, "t2425": {"pct": 120.4}, "t2526": {"pct": 4.0}}, "price": {"p2023": 3.65, "p2024": 3.726, "p2025": 3.726, "p2026": 3.726, "raw2023": "3.65", "raw2024": "3.726", "raw2025": "3.726", "raw2026": "3.726"}, "cost": {"c2023": 389911.25, "c2024": 551723.724, "c2025": 1215834.786, "c2026h1": 632372.994, "total": 2789842.754, "rawtotal": "2789842.754"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "Medical - for existing patients only", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "3", "status": "", "pic": "DARWISYAH", "drug": "Dabigatran Etexilate 150mg Hard Capsule", "cat": "A*", "quota": "800/600", "u2023": "106825", "u2024": "148074", "t2324": "38.6%", "u2025": "326311", "t2425": "120.37%", "u2026h1": "169719", "t2526": "4.02%", "usage_total": "750929", "p2023": "3.65", "c2023": "389911.25", "p2024": "3.726", "c2024": "551723.724", "p2025": "3.726", "c2025": "1215834.786", "p2026": "3.726", "c2026h1": "632372.994", "cost_total": "2789842.754", "appl": "1", "nonappl": "", "other_disc": "Medical - for existing patients only", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "4", "status": "PUB-OP", "pic": "AINA SHAHIRAH", "drug": "Edoxaban 30mg Tablet", "cat": "A*", "catKey": "A*", "quota": "105/100", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 7039.0, "h2026": 5501.0, "total": 12540.0, "raw2023": "0", "raw2024": "0", "raw2025": "7039", "raw2026": "5501", "rawtotal": "12540"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"pct": 56.3}}, "price": {"p2023": 0.0, "p2024": 6.355, "p2025": 6.361, "p2026": 6.107, "raw2023": "0", "raw2024": "6.355", "raw2025": "6.361", "raw2026": "6.107"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 44775.079, "c2026h1": 33594.607, "total": 78369.686, "rawtotal": "78369.686"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "-", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "4", "status": "", "pic": "AINA SHAHIRAH", "drug": "Edoxaban 30mg Tablet", "cat": "A*", "quota": "105/100", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "7039", "t2425": "#DIV/0!", "u2026h1": "5501", "t2526": "56.30%", "usage_total": "12540", "p2023": "0", "c2023": "0", "p2024": "6.355", "c2024": "0", "p2025": "6.361", "c2025": "44775.079", "p2026": "6.107", "c2026h1": "33594.607", "cost_total": "78369.686", "appl": "", "nonappl": "1", "other_disc": "-", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "5", "status": "PUB-OP", "pic": "", "drug": "Edoxaban 60mg Tablet", "cat": "A*", "catKey": "A*", "quota": "", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 8033.0, "h2026": 9710.0, "total": 17743.0, "raw2023": "0", "raw2024": "0", "raw2025": "8033", "raw2026": "9710", "rawtotal": "17743"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"pct": 141.8}}, "price": {"p2023": 0.0, "p2024": 6.355, "p2025": 6.361, "p2026": 6.107, "raw2023": "0", "raw2024": "6.355", "raw2025": "6.361", "raw2026": "6.107"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 51097.913, "c2026h1": 59298.97, "total": 110396.883, "rawtotal": "110396.883"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "-", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "5", "status": "", "pic": "", "drug": "Edoxaban 60mg Tablet", "cat": "A*", "quota": "", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "8033", "t2425": "#DIV/0!", "u2026h1": "9710", "t2526": "141.75%", "usage_total": "17743", "p2023": "0", "c2023": "0", "p2024": "6.355", "c2024": "0", "p2025": "6.361", "c2025": "51097.913", "p2026": "6.107", "c2026h1": "59298.97", "cost_total": "110396.883", "appl": "", "nonappl": "1", "other_disc": "-", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "6", "status": "PUB-OP", "pic": "Pang Li Wen", "drug": "Evolocumab 140mg S/C Inj", "cat": "A*", "catKey": "A*", "quota": "10/10", "usage": {"y2023": 32.0, "y2024": 26.0, "y2025": 43.0, "h2026": 63.0, "total": 164.0, "raw2023": "32", "raw2024": "26", "raw2025": "43", "raw2026": "63", "rawtotal": "164"}, "trend": {"t2324": {"pct": -18.8}, "t2425": {"pct": 65.4}, "t2526": {"pct": 193.0}}, "price": {"p2023": 554.3, "p2024": 554.3, "p2025": 553.8, "p2026": 533.8, "raw2023": "554.3", "raw2024": "554.3", "raw2025": "553.8", "raw2026": "533.8"}, "cost": {"c2023": 17737.6, "c2024": 14411.8, "c2025": 23813.4, "c2026h1": 33629.4, "total": 89592.2, "rawtotal": "89592.2"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "-", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "6", "status": "", "pic": "Pang Li Wen", "drug": "Evolocumab 140mg S/C Inj", "cat": "A*", "quota": "10/10", "u2023": "32", "u2024": "26", "t2324": "-18.8%", "u2025": "43", "t2425": "65.38%", "u2026h1": "63", "t2526": "193.02%", "usage_total": "164", "p2023": "554.3", "c2023": "17737.6", "p2024": "554.3", "c2024": "14411.8", "p2025": "553.8", "c2025": "23813.4", "p2026": "533.8", "c2026h1": "33629.4", "cost_total": "89592.2", "appl": "", "nonappl": "1", "other_disc": "-", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "7", "status": "PUB-OP", "pic": "NURNINA", "drug": "Ezetimibe 10mg + Simvastatin 20mg", "cat": "A*", "catKey": "A*", "quota": "44/0", "usage": {"y2023": 10657.0, "y2024": 9958.0, "y2025": 12939.0, "h2026": 6124.0, "total": 39678.0, "raw2023": "10657", "raw2024": "9958", "raw2025": "12939", "raw2026": "6124", "rawtotal": "39678"}, "trend": {"t2324": {"pct": -6.6}, "t2425": {"pct": 29.9}, "t2526": {"pct": -5.3}}, "price": {"p2023": 3.63, "p2024": 3.63, "p2025": 1.609, "p2026": 1.609, "raw2023": "3.63", "raw2024": "3.63", "raw2025": "1.609", "raw2026": "1.609"}, "cost": {"c2023": 38684.91, "c2024": 36147.54, "c2025": 20818.851, "c2026h1": 9853.516, "total": 105504.817, "rawtotal": "105504.817"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "Medical (10), Nephro (7)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "7", "status": "", "pic": "NURNINA", "drug": "Ezetimibe 10mg + Simvastatin 20mg", "cat": "A*", "quota": "44/0", "u2023": "10657", "u2024": "9958", "t2324": "-6.6%", "u2025": "12939", "t2425": "29.94%", "u2026h1": "6124", "t2526": "-5.34%", "usage_total": "39678", "p2023": "3.63", "c2023": "38684.91", "p2024": "3.63", "c2024": "36147.54", "p2025": "1.609", "c2025": "20818.851", "p2026": "1.609", "c2026h1": "9853.516", "cost_total": "105504.817", "appl": "1", "nonappl": "", "other_disc": "Medical (10), Nephro (7)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "8", "status": "PUB-OP", "pic": "CHRISTINA", "drug": "Flecainide Acetate 100 mg Tablet", "cat": "A*", "catKey": "A*", "quota": "186/200", "usage": {"y2023": 17589.0, "y2024": 28690.0, "y2025": 42198.0, "h2026": 30646.0, "total": 119123.0, "raw2023": "17589", "raw2024": "28690", "raw2025": "42198", "raw2026": "30646", "rawtotal": "119123"}, "trend": {"t2324": {"pct": 63.1}, "t2425": {"pct": 47.1}, "t2526": {"pct": 45.2}}, "price": {"p2023": 4.45, "p2024": 4.45, "p2025": 4.68, "p2026": 4.68, "raw2023": "4.45", "raw2024": "4.45", "raw2025": "4.68", "raw2026": "4.68"}, "cost": {"c2023": 78271.05, "c2024": 127670.5, "c2025": 197486.64, "c2026h1": 143423.28, "total": 546851.47, "rawtotal": "546851.47"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Paeds Cardio", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "8", "status": "", "pic": "CHRISTINA", "drug": "Flecainide Acetate 100 mg Tablet", "cat": "A*", "quota": "186/200", "u2023": "17589", "u2024": "28690", "t2324": "63.1%", "u2025": "42198", "t2425": "47.08%", "u2026h1": "30646", "t2526": "45.25%", "usage_total": "119123", "p2023": "4.45", "c2023": "78271.05", "p2024": "4.45", "c2024": "127670.5", "p2025": "4.68", "c2025": "197486.64", "p2026": "4.68", "c2026h1": "143423.28", "cost_total": "546851.47", "appl": "", "nonappl": "1", "other_disc": "Paeds Cardio", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "9", "status": "PUB-OP", "pic": "SUMITA", "drug": "Macitentan 10mg Tablet", "cat": "A*", "catKey": "A*", "quota": "44/80", "usage": {"y2023": 0.0, "y2024": 480.0, "y2025": 2336.0, "h2026": 5294.0, "total": 8110.0, "raw2023": "0", "raw2024": "480", "raw2025": "2336", "raw2026": "5294", "rawtotal": "8110"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"pct": 386.7}, "t2526": {"pct": 353.2}}, "price": {"p2023": 279.79, "p2024": 118.17, "p2025": 116.78, "p2026": 94.34, "raw2023": "279.79", "raw2024": "118.17", "raw2025": "116.78", "raw2026": "94.34"}, "cost": {"c2023": 0.0, "c2024": 56721.6, "c2025": 272798.08, "c2026h1": 499435.96, "total": 828955.64, "rawtotal": "828955.64"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Paeds Cardio", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "9", "status": "", "pic": "SUMITA", "drug": "Macitentan 10mg Tablet", "cat": "A*", "quota": "44/80", "u2023": "0", "u2024": "480", "t2324": "#DIV/0!", "u2025": "2336", "t2425": "386.67%", "u2026h1": "5294", "t2526": "353.25%", "usage_total": "8110", "p2023": "279.79", "c2023": "0", "p2024": "118.17", "c2024": "56721.6", "p2025": "116.78", "c2025": "272798.08", "p2026": "94.34", "c2026h1": "499435.96", "cost_total": "828955.64", "appl": "", "nonappl": "1", "other_disc": "Paeds Cardio", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "10", "status": "PUB-OP", "pic": "RABIATUL", "drug": "Rivaroxaban 15mg tab", "cat": "A*", "catKey": "A*", "quota": "700/700", "usage": {"y2023": 10768.0, "y2024": 17626.0, "y2025": 23467.0, "h2026": 12449.0, "total": 64310.0, "raw2023": "10768", "raw2024": "17626", "raw2025": "23467", "raw2026": "12449", "rawtotal": "64310"}, "trend": {"t2324": {"pct": 63.7}, "t2425": {"pct": 33.1}, "t2526": {"pct": 6.1}}, "price": {"p2023": 6.74, "p2024": 6.74, "p2025": 6.74, "p2026": 1.819, "raw2023": "6.74", "raw2024": "6.74", "raw2025": "6.74", "raw2026": "1.819"}, "cost": {"c2023": 72576.32, "c2024": 118799.24, "c2025": 158167.58, "c2026h1": 22644.731, "total": 372187.871, "rawtotal": "372187.871"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "Medical (50), Paeds Cardio (7)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "10", "status": "", "pic": "RABIATUL", "drug": "Rivaroxaban 15mg tab", "cat": "A*", "quota": "700/700", "u2023": "10768", "u2024": "17626", "t2324": "63.7%", "u2025": "23467", "t2425": "33.14%", "u2026h1": "12449", "t2526": "6.10%", "usage_total": "64310", "p2023": "6.74", "c2023": "72576.32", "p2024": "6.74", "c2024": "118799.24", "p2025": "6.74", "c2025": "158167.58", "p2026": "1.819", "c2026h1": "22644.731", "cost_total": "372187.871", "appl": "1", "nonappl": "", "other_disc": "Medical (50), Paeds Cardio (7)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-OP", "pic": "", "drug": "Rivaroxaban 20mg tab", "cat": "A*", "catKey": "A*", "quota": "700/700", "usage": {"y2023": 29415.0, "y2024": 48942.0, "y2025": 102133.0, "h2026": 59632.0, "total": 240122.0, "raw2023": "29415", "raw2024": "48942", "raw2025": "102133", "raw2026": "59632", "rawtotal": "240122"}, "trend": {"t2324": {"pct": 66.4}, "t2425": {"pct": 108.7}, "t2526": {"pct": 16.8}}, "price": {"p2023": 6.74, "p2024": 6.74, "p2025": 3.46, "p2026": 1.881, "raw2023": "6.74", "raw2024": "6.74", "raw2025": "3.46", "raw2026": "1.881"}, "cost": {"c2023": 198257.1, "c2024": 329869.08, "c2025": 353380.18, "c2026h1": 112167.792, "total": 993674.152, "rawtotal": "993674.152"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "Medical (50), Paeds Cardio (7)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Rivaroxaban 20mg tab", "cat": "A*", "quota": "700/700", "u2023": "29415", "u2024": "48942", "t2324": "66.4%", "u2025": "102133", "t2425": "108.68%", "u2026h1": "59632", "t2526": "16.77%", "usage_total": "240122", "p2023": "6.74", "c2023": "198257.1", "p2024": "6.74", "c2024": "329869.08", "p2025": "3.46", "c2025": "353380.18", "p2026": "1.881", "c2026h1": "112167.792", "cost_total": "993674.152", "appl": "1", "nonappl": "", "other_disc": "Medical (50), Paeds Cardio (7)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "11", "status": "PUB-OP", "pic": "SHAHNAZ", "drug": "Sacubutril+Valsartan50mg", "cat": "A*", "catKey": "A*", "quota": "1673/3000", "usage": {"y2023": 5158.0, "y2024": 17259.0, "y2025": 153141.0, "h2026": 42961.0, "total": 218519.0, "raw2023": "5158", "raw2024": "17259", "raw2025": "153141", "raw2026": "42961", "rawtotal": "218519"}, "trend": {"t2324": {"pct": 234.6}, "t2425": {"pct": 787.3}, "t2526": {"pct": -43.9}}, "price": {"p2023": 3.79, "p2024": 3.79, "p2025": 3.33, "p2026": 3.64, "raw2023": "3.79", "raw2024": "3.79", "raw2025": "3.33", "raw2026": "3.64"}, "cost": {"c2023": 19548.82, "c2024": 65411.61, "c2025": 509959.53, "c2026h1": 156378.04, "total": 751298.0, "rawtotal": "751298"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "-", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "11", "status": "", "pic": "SHAHNAZ", "drug": "Sacubutril+Valsartan50mg", "cat": "A*", "quota": "1673/3000", "u2023": "5158", "u2024": "17259", "t2324": "234.6%", "u2025": "153141", "t2425": "787.31%", "u2026h1": "42961", "t2526": "-43.89%", "usage_total": "218519", "p2023": "3.79", "c2023": "19548.82", "p2024": "3.79", "c2024": "65411.61", "p2025": "3.33", "c2025": "509959.53", "p2026": "3.64", "c2026h1": "156378.04", "cost_total": "751298", "appl": "1", "nonappl": "", "other_disc": "-", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-OP", "pic": "SHAHNAZ", "drug": "Sacubutril+Valsartan 100mg", "cat": "A*", "catKey": "A*", "quota": "1673/3000", "usage": {"y2023": 68949.0, "y2024": 127627.0, "y2025": 144282.0, "h2026": 139228.0, "total": 480086.0, "raw2023": "68949", "raw2024": "127627", "raw2025": "144282", "raw2026": "139228", "rawtotal": "480086"}, "trend": {"t2324": {"pct": 85.1}, "t2425": {"pct": 13.1}, "t2526": {"pct": 93.0}}, "price": {"p2023": 3.79, "p2024": 3.79, "p2025": 3.33, "p2026": 3.596, "raw2023": "3.79", "raw2024": "3.79", "raw2025": "3.33", "raw2026": "3.596"}, "cost": {"c2023": 261316.71, "c2024": 483706.33, "c2025": 480459.06, "c2026h1": 500663.888, "total": 1726145.988, "rawtotal": "1726145.988"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "-", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "SHAHNAZ", "drug": "Sacubutril+Valsartan 100mg", "cat": "A*", "quota": "1673/3000", "u2023": "68949", "u2024": "127627", "t2324": "85.1%", "u2025": "144282", "t2425": "13.05%", "u2026h1": "139228", "t2526": "92.99%", "usage_total": "480086", "p2023": "3.79", "c2023": "261316.71", "p2024": "3.79", "c2024": "483706.33", "p2025": "3.33", "c2025": "480459.06", "p2026": "3.596", "c2026h1": "500663.888", "cost_total": "1726145.988", "appl": "1", "nonappl": "", "other_disc": "-", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-OP", "pic": "SAKINAH", "drug": "Sacubutril+Valsartan 200mg", "cat": "A*", "catKey": "A*", "quota": "1673/3000", "usage": {"y2023": 39927.0, "y2024": 46218.0, "y2025": 82400.0, "h2026": 83352.0, "total": 251897.0, "raw2023": "39927", "raw2024": "46218", "raw2025": "82400", "raw2026": "83352", "rawtotal": "251897"}, "trend": {"t2324": {"pct": 15.8}, "t2425": {"pct": 78.3}, "t2526": {"pct": 102.3}}, "price": {"p2023": 3.79, "p2024": 3.79, "p2025": 3.33, "p2026": 3.596, "raw2023": "3.79", "raw2024": "3.79", "raw2025": "3.33", "raw2026": "3.596"}, "cost": {"c2023": 151323.33, "c2024": 175166.22, "c2025": 274392.0, "c2026h1": 299733.792, "total": 900615.342, "rawtotal": "900615.342"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "-", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "SAKINAH", "drug": "Sacubutril+Valsartan 200mg", "cat": "A*", "quota": "1673/3000", "u2023": "39927", "u2024": "46218", "t2324": "15.8%", "u2025": "82400", "t2425": "78.29%", "u2026h1": "83352", "t2526": "102.31%", "usage_total": "251897", "p2023": "3.79", "c2023": "151323.33", "p2024": "3.79", "c2024": "175166.22", "p2025": "3.33", "c2025": "274392", "p2026": "3.596", "c2026h1": "299733.792", "cost_total": "900615.342", "appl": "1", "nonappl": "", "other_disc": "-", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-OP", "pic": "SYUHADA", "drug": "Inclisiran 284mg/1.5ml Sol for Inj in Pre-filled Syringe", "cat": "A*", "catKey": "A*", "quota": "55/80", "usage": {"y2023": 0.0, "y2024": 12.0, "y2025": 20.0, "h2026": 47.0, "total": 79.0, "raw2023": "0", "raw2024": "12", "raw2025": "20", "raw2026": "47", "rawtotal": "79"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"pct": 66.7}, "t2526": {"pct": 370.0}}, "price": {"p2023": 0.0, "p2024": 4343.0, "p2025": 4343.0, "p2026": 3090.0, "raw2023": "0", "raw2024": "4343", "raw2025": "4343", "raw2026": "3090"}, "cost": {"c2023": 0.0, "c2024": 52116.0, "c2025": 86860.0, "c2026h1": 145230.0, "total": 284206.0, "rawtotal": "284206"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "-", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "SYUHADA", "drug": "Inclisiran 284mg/1.5ml Sol for Inj in Pre-filled Syringe", "cat": "A*", "quota": "55/80", "u2023": "0", "u2024": "12", "t2324": "#DIV/0!", "u2025": "20", "t2425": "66.67%", "u2026h1": "47", "t2526": "370.00%", "usage_total": "79", "p2023": "0", "c2023": "0", "p2024": "4343", "c2024": "52116", "p2025": "4343", "c2025": "86860", "p2026": "3090", "c2026h1": "145230", "cost_total": "284206", "appl": "", "nonappl": "1", "other_disc": "-", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-OP", "pic": "", "drug": "Sildenafil 20mg Tab", "cat": "A*", "catKey": "A*", "quota": "1/1 (PL)", "usage": {"y2023": 600.0, "y2024": 720.0, "y2025": 480.0, "h2026": 46.0, "total": 1846.0, "raw2023": "600", "raw2024": "720", "raw2025": "480", "raw2026": "46", "rawtotal": "1846"}, "trend": {"t2324": {"pct": 20.0}, "t2425": {"pct": -33.3}, "t2526": {"pct": -80.8}}, "price": {"p2023": 0.0, "p2024": 2.95, "p2025": 2.95, "p2026": 2.95, "raw2023": "0", "raw2024": "2.95", "raw2025": "2.95", "raw2026": "2.95"}, "cost": {"c2023": 0.0, "c2024": 2124.0, "c2025": 1416.0, "c2026h1": 135.7, "total": 3675.7, "rawtotal": "3675.7"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "-", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Sildenafil 20mg Tab", "cat": "A*", "quota": "1/1 (PL)", "u2023": "600", "u2024": "720", "t2324": "20.0%", "u2025": "480", "t2425": "-33.33%", "u2026h1": "46", "t2526": "-80.83%", "usage_total": "1846", "p2023": "0", "c2023": "0", "p2024": "2.95", "c2024": "2124", "p2025": "2.95", "c2025": "1416", "p2026": "2.95", "c2026h1": "135.7", "cost_total": "3675.7", "appl": "", "nonappl": "1", "other_disc": "-", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB IP", "pic": "Fairuzee", "drug": "Sodium Zirconium Cyclosilicate 5gm Powder", "cat": "A*", "catKey": "A*", "quota": "777/500", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 0.0, "h2026": 517.0, "total": 517.0, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "517", "rawtotal": "517"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 0.0, "p2024": 21.207, "p2025": 21.267, "p2026": 20.7, "raw2023": "0", "raw2024": "21.207", "raw2025": "21.267", "raw2026": "20.7"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 10701.9, "total": 10701.9, "rawtotal": "10701.9"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "PUB IP", "pic": "Fairuzee", "drug": "Sodium Zirconium Cyclosilicate 5gm Powder", "cat": "A*", "quota": "777/500", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "0", "t2425": "#DIV/0!", "u2026h1": "517", "t2526": "#DIV/0!", "usage_total": "517", "p2023": "0", "c2023": "0", "p2024": "21.207", "c2024": "0", "p2025": "21.267", "c2025": "0", "p2026": "20.7", "c2026h1": "10701.9", "cost_total": "10701.9", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "GTN SPRAY", "cat": "", "catKey": "OTHER", "quota": "0", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 0.0, "h2026": 41.0, "total": 41.0, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "41", "rawtotal": "41"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 90.0, "p2024": 90.0, "p2025": 90.0, "p2026": 90.0, "raw2023": "90", "raw2024": "90", "raw2025": "90", "raw2026": "90"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 3690.0, "total": 3690.0, "rawtotal": "3690"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "-", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "OPEN PUB-OP", "pic": "", "drug": "GTN SPRAY", "cat": "", "quota": "0", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "0", "t2425": "#DIV/0!", "u2026h1": "41", "t2526": "#DIV/0!", "usage_total": "41", "p2023": "90", "c2023": "0", "p2024": "90", "c2024": "0", "p2025": "90", "c2025": "0", "p2026": "90", "c2026h1": "3690", "cost_total": "3690", "appl": "", "nonappl": "1", "other_disc": "-", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Rosuvastatin 20mg", "cat": "", "catKey": "OTHER", "quota": "0", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 0.0, "h2026": 506190.0, "total": 506190.0, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "506190", "rawtotal": "506190"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 0.44, "p2024": 0.28, "p2025": 0.21, "p2026": 0.16, "raw2023": "0.44", "raw2024": "0.28", "raw2025": "0.21", "raw2026": "0.16"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 80990.4, "total": 80990.4, "rawtotal": "80990.4"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "Medical (OPEN)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Rosuvastatin 20mg", "cat": "", "quota": "0", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "0", "t2425": "#DIV/0!", "u2026h1": "506190", "t2526": "#DIV/0!", "usage_total": "506190", "p2023": "0.44", "c2023": "0", "p2024": "0.28", "c2024": "0", "p2025": "0.21", "c2025": "0", "p2026": "0.16", "c2026h1": "80990.4", "cost_total": "80990.4", "appl": "1", "nonappl": "", "other_disc": "Medical (OPEN)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Trimetazidine MR 35mg Tab", "cat": "", "catKey": "OTHER", "quota": "0", "usage": {"y2023": 30961.0, "y2024": 75977.0, "y2025": 536917.0, "h2026": 791495.0, "total": 1435350.0, "raw2023": "30961", "raw2024": "75977", "raw2025": "536917", "raw2026": "791495", "rawtotal": "1435350"}, "trend": {"t2324": {"pct": 145.4}, "t2425": {"pct": 606.7}, "t2526": {"pct": 194.8}}, "price": {"p2023": 0.3, "p2024": 0.3, "p2025": 0.3, "p2026": 0.2, "raw2023": "0.3", "raw2024": "0.3", "raw2025": "0.3", "raw2026": "0.2"}, "cost": {"c2023": 9288.3, "c2024": 22793.1, "c2025": 161075.1, "c2026h1": 158299.0, "total": 351455.5, "rawtotal": "351455.5"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "-", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Trimetazidine MR 35mg Tab", "cat": "", "quota": "0", "u2023": "30961", "u2024": "75977", "t2324": "145.4%", "u2025": "536917", "t2425": "606.68%", "u2026h1": "791495", "t2526": "194.83%", "usage_total": "1435350", "p2023": "0.3", "c2023": "9288.3", "p2024": "0.3", "c2024": "22793.1", "p2025": "0.3", "c2025": "161075.1", "p2026": "0.2", "c2026h1": "158299", "cost_total": "351455.5", "appl": "", "nonappl": "1", "other_disc": "-", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Empagliflozin 10 mg", "cat": "A/KK", "catKey": "A/KK", "quota": "0", "usage": {"y2023": 76490.0, "y2024": 151704.0, "y2025": 306937.0, "h2026": 401228.0, "total": 936359.0, "raw2023": "76490", "raw2024": "151704", "raw2025": "306937", "raw2026": "401228", "rawtotal": "936359"}, "trend": {"t2324": {"pct": 98.3}, "t2425": {"pct": 102.3}, "t2526": {"pct": 161.4}}, "price": {"p2023": 1.7, "p2024": 1.68, "p2025": 1.66, "p2026": 1.66, "raw2023": "1.7", "raw2024": "1.68", "raw2025": "1.66", "raw2026": "1.66"}, "cost": {"c2023": 130033.0, "c2024": 254862.72, "c2025": 509515.42, "c2026h1": 666038.48, "total": 1560449.62, "rawtotal": "1560449.62"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Medical (OPEN)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Empagliflozin 10 mg", "cat": "A/KK", "quota": "0", "u2023": "76490", "u2024": "151704", "t2324": "98.3%", "u2025": "306937", "t2425": "102.33%", "u2026h1": "401228", "t2526": "161.44%", "usage_total": "936359", "p2023": "1.7", "c2023": "130033", "p2024": "1.68", "c2024": "254862.72", "p2025": "1.66", "c2025": "509515.42", "p2026": "1.66", "c2026h1": "666038.48", "cost_total": "1560449.62", "appl": "", "nonappl": "1", "other_disc": "Medical (OPEN)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Empagliflozin 25 mg", "cat": "A/KK", "catKey": "A/KK", "quota": "0", "usage": {"y2023": 58612.0, "y2024": 160018.0, "y2025": 327768.0, "h2026": 421351.0, "total": 967749.0, "raw2023": "58612", "raw2024": "160018", "raw2025": "327768", "raw2026": "421351", "rawtotal": "967749"}, "trend": {"t2324": {"pct": 173.0}, "t2425": {"pct": 104.8}, "t2526": {"pct": 157.1}}, "price": {"p2023": 1.7, "p2024": 1.65, "p2025": 1.74, "p2026": 1.72, "raw2023": "1.7", "raw2024": "1.65", "raw2025": "1.74", "raw2026": "1.72"}, "cost": {"c2023": 99640.4, "c2024": 264029.7, "c2025": 570316.32, "c2026h1": 724723.72, "total": 1658710.14, "rawtotal": "1658710.14"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Medical (OPEN)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Empagliflozin 25 mg", "cat": "A/KK", "quota": "0", "u2023": "58612", "u2024": "160018", "t2324": "173.0%", "u2025": "327768", "t2425": "104.83%", "u2026h1": "421351", "t2526": "157.10%", "usage_total": "967749", "p2023": "1.7", "c2023": "99640.4", "p2024": "1.65", "c2024": "264029.7", "p2025": "1.74", "c2025": "570316.32", "p2026": "1.72", "c2026h1": "724723.72", "cost_total": "1658710.14", "appl": "", "nonappl": "1", "other_disc": "Medical (OPEN)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Perindopril Arginine / Amlodipine / Indapamide", "cat": "A/KK", "catKey": "A/KK", "quota": "0", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 0.0, "h2026": 360.0, "total": 360.0, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "360", "rawtotal": "360"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 0.0, "p2024": 0.0, "p2025": 0.0, "p2026": 0.64, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "0.64"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 230.4, "total": 230.4, "rawtotal": "230.4"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Medical (OPEN)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Perindopril Arginine / Amlodipine / Indapamide", "cat": "A/KK", "quota": "0", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "0", "t2425": "#DIV/0!", "u2026h1": "360", "t2526": "#DIV/0!", "usage_total": "360", "p2023": "0", "c2023": "0", "p2024": "0", "c2024": "0", "p2025": "0", "c2025": "0", "p2026": "0.64", "c2026h1": "230.4", "cost_total": "230.4", "appl": "", "nonappl": "1", "other_disc": "Medical (OPEN)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Ivabradine 5mg Tablet", "cat": "A*", "catKey": "A*", "quota": "0", "usage": {"y2023": 88394.0, "y2024": 125075.0, "y2025": 193332.0, "h2026": 110822.0, "total": 517623.0, "raw2023": "88394", "raw2024": "125075", "raw2025": "193332", "raw2026": "110822", "rawtotal": "517623"}, "trend": {"t2324": {"pct": 41.5}, "t2425": {"pct": 54.6}, "t2526": {"pct": 14.6}}, "price": {"p2023": 1.29, "p2024": 1.29, "p2025": 0.44, "p2026": 0.44, "raw2023": "1.29", "raw2024": "1.29", "raw2025": "0.44", "raw2026": "0.44"}, "cost": {"c2023": 114028.26, "c2024": 161346.75, "c2025": 85066.08, "c2026h1": 48761.68, "total": 409202.77, "rawtotal": "409202.77"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "CTC (OPEN)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Ivabradine 5mg Tablet", "cat": "A*", "quota": "0", "u2023": "88394", "u2024": "125075", "t2324": "41.5%", "u2025": "193332", "t2425": "54.57%", "u2026h1": "110822", "t2526": "14.64%", "usage_total": "517623", "p2023": "1.29", "c2023": "114028.26", "p2024": "1.29", "c2024": "161346.75", "p2025": "0.44", "c2025": "85066.08", "p2026": "0.44", "c2026h1": "48761.68", "cost_total": "409202.77", "appl": "1", "nonappl": "", "other_disc": "CTC (OPEN)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Ivabradin 7.5mg Tablet", "cat": "A*", "catKey": "A*", "quota": "0", "usage": {"y2023": 31485.0, "y2024": 35110.0, "y2025": 68893.0, "h2026": 26100.0, "total": 161588.0, "raw2023": "31485", "raw2024": "35110", "raw2025": "68893", "raw2026": "26100", "rawtotal": "161588"}, "trend": {"t2324": {"pct": 11.5}, "t2425": {"pct": 96.2}, "t2526": {"pct": -24.2}}, "price": {"p2023": 1.94, "p2024": 1.59, "p2025": 0.57, "p2026": 0.57, "raw2023": "1.94", "raw2024": "1.59", "raw2025": "0.57", "raw2026": "0.57"}, "cost": {"c2023": 61080.9, "c2024": 55824.9, "c2025": 39269.01, "c2026h1": 14877.0, "total": 171051.81, "rawtotal": "171051.81"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "CTC (OPEN)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Ivabradin 7.5mg Tablet", "cat": "A*", "quota": "0", "u2023": "31485", "u2024": "35110", "t2324": "11.5%", "u2025": "68893", "t2425": "96.22%", "u2026h1": "26100", "t2526": "-24.23%", "usage_total": "161588", "p2023": "1.94", "c2023": "61080.9", "p2024": "1.59", "c2024": "55824.9", "p2025": "0.57", "c2025": "39269.01", "p2026": "0.57", "c2026h1": "14877", "cost_total": "171051.81", "appl": "1", "nonappl": "", "other_disc": "CTC (OPEN)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Amlodipine 5mg & Valsartan 160mg Tablet", "cat": "A/KK", "catKey": "A/KK", "quota": "0", "usage": {"y2023": 2990.0, "y2024": 4492.0, "y2025": 7043.0, "h2026": 6915.0, "total": 21440.0, "raw2023": "2990", "raw2024": "4492", "raw2025": "7043", "raw2026": "6915", "rawtotal": "21440"}, "trend": {"t2324": {"pct": 50.2}, "t2425": {"pct": 56.8}, "t2526": {"pct": 96.4}}, "price": {"p2023": 0.47, "p2024": 0.47, "p2025": 0.58, "p2026": 0.66, "raw2023": "0.47", "raw2024": "0.47", "raw2025": "0.58", "raw2026": "0.66"}, "cost": {"c2023": 1405.3, "c2024": 2111.24, "c2025": 4084.94, "c2026h1": 4563.9, "total": 12165.38, "rawtotal": "12165.38"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "pembelian mengikut usage (cardio, nephro, medical)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Amlodipine 5mg & Valsartan 160mg Tablet", "cat": "A/KK", "quota": "0", "u2023": "2990", "u2024": "4492", "t2324": "50.2%", "u2025": "7043", "t2425": "56.79%", "u2026h1": "6915", "t2526": "96.37%", "usage_total": "21440", "p2023": "0.47", "c2023": "1405.3", "p2024": "0.47", "c2024": "2111.24", "p2025": "0.58", "c2025": "4084.94", "p2026": "0.66", "c2026h1": "4563.9", "cost_total": "12165.38", "appl": "1", "nonappl": "", "other_disc": "pembelian mengikut usage (cardio, nephro, medical)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Amlodipine 10mg & Valsartan 160mg Tablet", "cat": "A/KK", "catKey": "A/KK", "quota": "0", "usage": {"y2023": 9504.0, "y2024": 13881.0, "y2025": 25168.0, "h2026": 13942.0, "total": 62495.0, "raw2023": "9504", "raw2024": "13881", "raw2025": "25168", "raw2026": "13942", "rawtotal": "62495"}, "trend": {"t2324": {"pct": 46.1}, "t2425": {"pct": 81.3}, "t2526": {"pct": 10.8}}, "price": {"p2023": 0.47, "p2024": 0.47, "p2025": 0.58, "p2026": 0.66, "raw2023": "0.47", "raw2024": "0.47", "raw2025": "0.58", "raw2026": "0.66"}, "cost": {"c2023": 4466.88, "c2024": 6524.07, "c2025": 14597.44, "c2026h1": 9201.72, "total": 34790.11, "rawtotal": "34790.11"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Amlodipine 10mg & Valsartan 160mg Tablet", "cat": "A/KK", "quota": "0", "u2023": "9504", "u2024": "13881", "t2324": "46.1%", "u2025": "25168", "t2425": "81.31%", "u2026h1": "13942", "t2526": "10.79%", "usage_total": "62495", "p2023": "0.47", "c2023": "4466.88", "p2024": "0.47", "c2024": "6524.07", "p2025": "0.58", "c2025": "14597.44", "p2026": "0.66", "c2026h1": "9201.72", "cost_total": "34790.11", "appl": "1", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Apixaban 2.5mg Tablet", "cat": "A*", "catKey": "A*", "quota": "0", "usage": {"y2023": 19146.0, "y2024": 45644.0, "y2025": 110244.0, "h2026": 301935.0, "total": 476969.0, "raw2023": "19146", "raw2024": "45644", "raw2025": "110244", "raw2026": "301935", "rawtotal": "476969"}, "trend": {"t2324": {"pct": 138.4}, "t2425": {"pct": 141.5}, "t2526": {"pct": 447.8}}, "price": {"p2023": 3.27, "p2024": 3.27, "p2025": 0.75, "p2026": 3.37, "raw2023": "3.27", "raw2024": "3.27", "raw2025": "0.75", "raw2026": "3.37"}, "cost": {"c2023": 62607.42, "c2024": 149255.88, "c2025": 82683.0, "c2026h1": 1017520.95, "total": 1312067.25, "rawtotal": "1312067.25"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "nephro (15 combined quota), Med-Geri (10), cardio (OPEN)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Apixaban 2.5mg Tablet", "cat": "A*", "quota": "0", "u2023": "19146", "u2024": "45644", "t2324": "138.4%", "u2025": "110244", "t2425": "141.53%", "u2026h1": "301935", "t2526": "447.76%", "usage_total": "476969", "p2023": "3.27", "c2023": "62607.42", "p2024": "3.27", "c2024": "149255.88", "p2025": "0.75", "c2025": "82683", "p2026": "3.37", "c2026h1": "1017520.95", "cost_total": "1312067.25", "appl": "1", "nonappl": "", "other_disc": "nephro (15 combined quota), Med-Geri (10), cardio (OPEN)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Apixaban 5mg Tablet", "cat": "A*", "catKey": "A*", "quota": "0", "usage": {"y2023": 46172.0, "y2024": 96826.0, "y2025": 225821.0, "h2026": 295630.0, "total": 664449.0, "raw2023": "46172", "raw2024": "96826", "raw2025": "225821", "raw2026": "295630", "rawtotal": "664449"}, "trend": {"t2324": {"pct": 109.7}, "t2425": {"pct": 133.2}, "t2526": {"pct": 161.8}}, "price": {"p2023": 3.27, "p2024": 3.27, "p2025": 0.75, "p2026": 3.32, "raw2023": "3.27", "raw2024": "3.27", "raw2025": "0.75", "raw2026": "3.32"}, "cost": {"c2023": 150982.44, "c2024": 316621.02, "c2025": 169365.75, "c2026h1": 981491.6, "total": 1618460.81, "rawtotal": "1618460.81"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "Medical (80), \nRespi (20), \nnephro (15 combined quota), \ncardio (OPEN)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Apixaban 5mg Tablet", "cat": "A*", "quota": "0", "u2023": "46172", "u2024": "96826", "t2324": "109.7%", "u2025": "225821", "t2425": "133.22%", "u2026h1": "295630", "t2526": "161.83%", "usage_total": "664449", "p2023": "3.27", "c2023": "150982.44", "p2024": "3.27", "c2024": "316621.02", "p2025": "0.75", "c2025": "169365.75", "p2026": "3.32", "c2026h1": "981491.6", "cost_total": "1618460.81", "appl": "1", "nonappl": "", "other_disc": "Medical (80), \nRespi (20), \nnephro (15 combined quota), \ncardio (OPEN)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Telmisartan 80mg + HCTZ 12.5mg Tab", "cat": "A*", "catKey": "A*", "quota": "0", "usage": {"y2023": 4575.0, "y2024": 5908.0, "y2025": 10709.0, "h2026": 4745.0, "total": 25937.0, "raw2023": "4575", "raw2024": "5908", "raw2025": "10709", "raw2026": "4745", "rawtotal": "25937"}, "trend": {"t2324": {"pct": 29.1}, "t2425": {"pct": 81.3}, "t2526": {"pct": -11.4}}, "price": {"p2023": 1.05, "p2024": 1.05, "p2025": 1.05, "p2026": 0.44, "raw2023": "1.05", "raw2024": "1.05", "raw2025": "1.05", "raw2026": "0.44"}, "cost": {"c2023": 4803.75, "c2024": 6203.4, "c2025": 11244.45, "c2026h1": 2087.8, "total": 24339.4, "rawtotal": "24339.4"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "pembelian mengikut usage (cardio, nephro, medical)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Telmisartan 80mg + HCTZ 12.5mg Tab", "cat": "A*", "quota": "0", "u2023": "4575", "u2024": "5908", "t2324": "29.1%", "u2025": "10709", "t2425": "81.26%", "u2026h1": "4745", "t2526": "-11.38%", "usage_total": "25937", "p2023": "1.05", "c2023": "4803.75", "p2024": "1.05", "c2024": "6203.4", "p2025": "1.05", "c2025": "11244.45", "p2026": "0.44", "c2026h1": "2087.8", "cost_total": "24339.4", "appl": "", "nonappl": "1", "other_disc": "pembelian mengikut usage (cardio, nephro, medical)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Ticagrelor 90mg Tab", "cat": "A*", "catKey": "A*", "quota": "0", "usage": {"y2023": 101567.0, "y2024": 203594.0, "y2025": 244723.0, "h2026": 200398.0, "total": 750282.0, "raw2023": "101567", "raw2024": "203594", "raw2025": "244723", "raw2026": "200398", "rawtotal": "750282"}, "trend": {"t2324": {"pct": 100.5}, "t2425": {"pct": 20.2}, "t2526": {"pct": 63.8}}, "price": {"p2023": 4.12, "p2024": 3.37, "p2025": 3.98, "p2026": null, "raw2023": "4.12", "raw2024": "3.37", "raw2025": "3.98", "raw2026": ""}, "cost": {"c2023": 418456.04, "c2024": 686111.78, "c2025": 973997.54, "c2026h1": 0.0, "total": 2078565.36, "rawtotal": "2078565.36"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "CTC (OPEN)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Ticagrelor 90mg Tab", "cat": "A*", "quota": "0", "u2023": "101567", "u2024": "203594", "t2324": "100.5%", "u2025": "244723", "t2425": "20.20%", "u2026h1": "200398", "t2526": "63.78%", "usage_total": "750282", "p2023": "4.12", "c2023": "418456.04", "p2024": "3.37", "c2024": "686111.78", "p2025": "3.98", "c2025": "973997.54", "p2026": "", "c2026h1": "0", "cost_total": "2078565.36", "appl": "", "nonappl": "1", "other_disc": "CTC (OPEN)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Valsartan 80mg + HCTZ 12.5mg", "cat": "A/KK", "catKey": "A/KK", "quota": "0", "usage": {"y2023": 3950.0, "y2024": 6989.0, "y2025": 11561.0, "h2026": 6791.0, "total": 29291.0, "raw2023": "3950", "raw2024": "6989", "raw2025": "11561", "raw2026": "6791", "rawtotal": "29291"}, "trend": {"t2324": {"pct": 76.9}, "t2425": {"pct": 65.4}, "t2526": {"pct": 17.5}}, "price": {"p2023": 1.03, "p2024": 0.97, "p2025": 1.03, "p2026": 0.34, "raw2023": "1.03", "raw2024": "0.97", "raw2025": "1.03", "raw2026": "0.34"}, "cost": {"c2023": 4068.5, "c2024": 6779.33, "c2025": 11907.83, "c2026h1": 2308.94, "total": 25064.6, "rawtotal": "25064.6"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "pembelian mengikut usage (cardio, nephro, medical)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Valsartan 80mg + HCTZ 12.5mg", "cat": "A/KK", "quota": "0", "u2023": "3950", "u2024": "6989", "t2324": "76.9%", "u2025": "11561", "t2425": "65.42%", "u2026h1": "6791", "t2526": "17.48%", "usage_total": "29291", "p2023": "1.03", "c2023": "4068.5", "p2024": "0.97", "c2024": "6779.33", "p2025": "1.03", "c2025": "11907.83", "p2026": "0.34", "c2026h1": "2308.94", "cost_total": "25064.6", "appl": "", "nonappl": "1", "other_disc": "pembelian mengikut usage (cardio, nephro, medical)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Vildagliptin 50mg Tab", "cat": "A*", "catKey": "A*", "quota": "0", "usage": {"y2023": 45799.0, "y2024": 85603.0, "y2025": 192898.0, "h2026": 143244.0, "total": 467544.0, "raw2023": "45799", "raw2024": "85603", "raw2025": "192898", "raw2026": "143244", "rawtotal": "467544"}, "trend": {"t2324": {"pct": 86.9}, "t2425": {"pct": 125.3}, "t2526": {"pct": 48.5}}, "price": {"p2023": 0.42, "p2024": 0.24, "p2025": 0.24, "p2026": 0.24, "raw2023": "0.42", "raw2024": "0.24", "raw2025": "0.24", "raw2026": "0.24"}, "cost": {"c2023": 19235.58, "c2024": 20544.72, "c2025": 46295.52, "c2026h1": 34378.56, "total": 120454.38, "rawtotal": "120454.38"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Medical (OPEN), Nephro (OPEN)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Vildagliptin 50mg Tab", "cat": "A*", "quota": "0", "u2023": "45799", "u2024": "85603", "t2324": "86.9%", "u2025": "192898", "t2425": "125.34%", "u2026h1": "143244", "t2526": "48.52%", "usage_total": "467544", "p2023": "0.42", "c2023": "19235.58", "p2024": "0.24", "c2024": "20544.72", "p2025": "0.24", "c2025": "46295.52", "p2026": "0.24", "c2026h1": "34378.56", "cost_total": "120454.38", "appl": "", "nonappl": "1", "other_disc": "Medical (OPEN), Nephro (OPEN)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-OP", "pic": "", "drug": "Dapagliflozin 10mg Tablet", "cat": "A/KK", "catKey": "A/KK", "quota": "0", "usage": {"y2023": 7522.0, "y2024": 29538.0, "y2025": 126588.0, "h2026": 158954.0, "total": 322602.0, "raw2023": "7522", "raw2024": "29538", "raw2025": "126588", "raw2026": "158954", "rawtotal": "322602"}, "trend": {"t2324": {"pct": 292.7}, "t2425": {"pct": 328.6}, "t2526": {"pct": 151.1}}, "price": {"p2023": 1.37, "p2024": 0.78, "p2025": 0.77, "p2026": 0.77, "raw2023": "1.37", "raw2024": "0.78", "raw2025": "0.77", "raw2026": "0.77"}, "cost": {"c2023": 10305.14, "c2024": 23039.64, "c2025": 97472.76, "c2026h1": 122394.58, "total": 253212.12, "rawtotal": "253212.12"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "Medical (OPEN), Nephro (OPEN)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "", "drug": "Dapagliflozin 10mg Tablet", "cat": "A/KK", "quota": "0", "u2023": "7522", "u2024": "29538", "t2324": "292.7%", "u2025": "126588", "t2425": "328.56%", "u2026h1": "158954", "t2526": "151.14%", "usage_total": "322602", "p2023": "1.37", "c2023": "10305.14", "p2024": "0.78", "c2024": "23039.64", "p2025": "0.77", "c2025": "97472.76", "p2026": "0.77", "c2026h1": "122394.58", "cost_total": "253212.12", "appl": "1", "nonappl": "", "other_disc": "Medical (OPEN), Nephro (OPEN)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "AUDREY", "drug": "Midodrine 2.5mg Tablet (newly approved)", "cat": "KPK", "catKey": "OTHER", "quota": "/10", "usage": {"y2023": 0.0, "y2024": 1284.0, "y2025": 3108.0, "h2026": 3082.0, "total": 7474.0, "raw2023": "0", "raw2024": "1284", "raw2025": "3108", "raw2026": "3082", "rawtotal": "7474"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"pct": 142.1}, "t2526": {"pct": 98.3}}, "price": {"p2023": 4.05, "p2024": 4.05, "p2025": 3.01, "p2026": 3.01, "raw2023": "4.05", "raw2024": "4.05", "raw2025": "3.01", "raw2026": "3.01"}, "cost": {"c2023": 0.0, "c2024": 5200.2, "c2025": 9355.08, "c2026h1": 9276.82, "total": 23832.1, "rawtotal": "23832.1"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "KPK - PT (OP)", "pic": "AUDREY", "drug": "Midodrine 2.5mg Tablet (newly approved)", "cat": "KPK", "quota": "/10", "u2023": "0", "u2024": "1284", "t2324": "#DIV/0!", "u2025": "3108", "t2425": "142.06%", "u2026h1": "3082", "t2526": "98.33%", "usage_total": "7474", "p2023": "4.05", "c2023": "0", "p2024": "4.05", "c2024": "5200.2", "p2025": "3.01", "c2025": "9355.08", "p2026": "3.01", "c2026h1": "9276.82", "cost_total": "23832.1", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "AUDREY", "drug": "Midodrine 5mg Tablet (newly approved)", "cat": "KPK", "catKey": "OTHER", "quota": "/10", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 0.0, "h2026": 711.0, "total": 711.0, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "711", "rawtotal": "711"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 0.0, "p2024": 0.0, "p2025": 3.0, "p2026": 3.01, "raw2023": "0", "raw2024": "0", "raw2025": "3", "raw2026": "3.01"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 2140.11, "total": 2140.11, "rawtotal": "2140.11"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "AUDREY", "drug": "Midodrine 5mg Tablet (newly approved)", "cat": "KPK", "quota": "/10", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "0", "t2425": "#DIV/0!", "u2026h1": "711", "t2526": "#DIV/0!", "usage_total": "711", "p2023": "0", "c2023": "0", "p2024": "0", "c2024": "0", "p2025": "3", "c2025": "0", "p2026": "3.01", "c2026h1": "2140.11", "cost_total": "2140.11", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "PANG LI WEN", "drug": "Eplerenone 25mg Tab", "cat": "KPK", "catKey": "OTHER", "quota": "3/3", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 180.0, "h2026": 230.0, "total": 410.0, "raw2023": "0", "raw2024": "0", "raw2025": "180", "raw2026": "230", "rawtotal": "410"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"pct": 155.6}}, "price": {"p2023": 3.67, "p2024": 3.67, "p2025": 3.67, "p2026": 3.67, "raw2023": "3.67", "raw2024": "3.67", "raw2025": "3.67", "raw2026": "3.67"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 660.6, "c2026h1": 844.1, "total": 1504.7, "rawtotal": "1504.7"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "PANG LI WEN", "drug": "Eplerenone 25mg Tab", "cat": "KPK", "quota": "3/3", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "180", "t2425": "#DIV/0!", "u2026h1": "230", "t2526": "155.56%", "usage_total": "410", "p2023": "3.67", "c2023": "0", "p2024": "3.67", "c2024": "0", "p2025": "3.67", "c2025": "660.6", "p2026": "3.67", "c2026h1": "844.1", "cost_total": "1504.7", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "TYC", "drug": "Fludrocortisone 0.1mg Tab", "cat": "KPK", "catKey": "OTHER", "quota": "0", "usage": {"y2023": 2480.0, "y2024": 2429.0, "y2025": 1320.0, "h2026": 106.0, "total": 6335.0, "raw2023": "2480", "raw2024": "2429", "raw2025": "1320", "raw2026": "106", "rawtotal": "6335"}, "trend": {"t2324": {"pct": -2.1}, "t2425": {"pct": -45.7}, "t2526": {"pct": -83.9}}, "price": {"p2023": 0.75, "p2024": 0.77, "p2025": 0.56, "p2026": 0.56, "raw2023": "0.75", "raw2024": "0.77", "raw2025": "0.56", "raw2026": "0.56"}, "cost": {"c2023": 1860.0, "c2024": 1870.33, "c2025": 739.2, "c2026h1": 59.36, "total": 4528.89, "rawtotal": "4528.89"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "TYC", "drug": "Fludrocortisone 0.1mg Tab", "cat": "KPK", "quota": "0", "u2023": "2480", "u2024": "2429", "t2324": "-2.1%", "u2025": "1320", "t2425": "-45.66%", "u2026h1": "106", "t2526": "-83.94%", "usage_total": "6335", "p2023": "0.75", "c2023": "1860", "p2024": "0.77", "c2024": "1870.33", "p2025": "0.56", "c2025": "739.2", "p2026": "0.56", "c2026h1": "59.36", "cost_total": "4528.89", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "SYAHIRA", "drug": "Hydroquinidine 300mg Caps", "cat": "KPK", "catKey": "OTHER", "quota": "2/2", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 300.0, "h2026": 120.0, "total": 420.0, "raw2023": "0", "raw2024": "0", "raw2025": "300", "raw2026": "120", "rawtotal": "420"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"pct": -20.0}}, "price": {"p2023": 3.17, "p2024": 3.17, "p2025": 3.17, "p2026": 3.17, "raw2023": "3.17", "raw2024": "3.17", "raw2025": "3.17", "raw2026": "3.17"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 951.0, "c2026h1": 380.4, "total": 1331.4, "rawtotal": "1331.4"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "SYAHIRA", "drug": "Hydroquinidine 300mg Caps", "cat": "KPK", "quota": "2/2", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "300", "t2425": "#DIV/0!", "u2026h1": "120", "t2526": "-20.00%", "usage_total": "420", "p2023": "3.17", "c2023": "0", "p2024": "3.17", "c2024": "0", "p2025": "3.17", "c2025": "951", "p2026": "3.17", "c2026h1": "380.4", "cost_total": "1331.4", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "SIN YIN LIANG", "drug": "Iloprost Neb Soln", "cat": "KPK", "catKey": "OTHER", "quota": "2/2", "usage": {"y2023": 0.0, "y2024": 242.0, "y2025": 347.0, "h2026": 746.0, "total": 1335.0, "raw2023": "0", "raw2024": "242", "raw2025": "347", "raw2026": "746", "rawtotal": "1335"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"pct": 43.4}, "t2526": {"pct": 330.0}}, "price": {"p2023": 71.99, "p2024": 37.5, "p2025": 104.0, "p2026": 104.0, "raw2023": "71.99", "raw2024": "37.5", "raw2025": "104", "raw2026": "104"}, "cost": {"c2023": 0.0, "c2024": 9075.0, "c2025": 36088.0, "c2026h1": 77584.0, "total": 122747.0, "rawtotal": "122747"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "SIN YIN LIANG", "drug": "Iloprost Neb Soln", "cat": "KPK", "quota": "2/2", "u2023": "0", "u2024": "242", "t2324": "#DIV/0!", "u2025": "347", "t2425": "43.39%", "u2026h1": "746", "t2526": "329.97%", "usage_total": "1335", "p2023": "71.99", "c2023": "0", "p2024": "37.5", "c2024": "9075", "p2025": "104", "c2025": "36088", "p2026": "104", "c2026h1": "77584", "cost_total": "122747", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "CHUNG YI LING", "drug": "Ranolazine 500mg MR Tab", "cat": "KPK", "catKey": "OTHER", "quota": "22/30", "usage": {"y2023": 0.0, "y2024": 7560.0, "y2025": 5789.0, "h2026": 3882.0, "total": 17231.0, "raw2023": "0", "raw2024": "7560", "raw2025": "5789", "raw2026": "3882", "rawtotal": "17231"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"pct": -23.4}, "t2526": {"pct": 34.1}}, "price": {"p2023": 2.87, "p2024": 2.87, "p2025": 2.87, "p2026": 2.87, "raw2023": "2.87", "raw2024": "2.87", "raw2025": "2.87", "raw2026": "2.87"}, "cost": {"c2023": 0.0, "c2024": 21697.2, "c2025": 16614.43, "c2026h1": 11141.34, "total": 49452.97, "rawtotal": "49452.97"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "CHUNG YI LING", "drug": "Ranolazine 500mg MR Tab", "cat": "KPK", "quota": "22/30", "u2023": "0", "u2024": "7560", "t2324": "#DIV/0!", "u2025": "5789", "t2425": "-23.43%", "u2026h1": "3882", "t2526": "34.12%", "usage_total": "17231", "p2023": "2.87", "c2023": "0", "p2024": "2.87", "c2024": "21697.2", "p2025": "2.87", "c2025": "16614.43", "p2026": "2.87", "c2026h1": "11141.34", "cost_total": "49452.97", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "CHUNG YI LING", "drug": "Ranolazine 375mg MR Tab", "cat": "KPK", "catKey": "OTHER", "quota": "1/1", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 120.0, "h2026": 450.0, "total": 570.0, "raw2023": "0", "raw2024": "0", "raw2025": "120", "raw2026": "450", "rawtotal": "570"}, "trend": {"t2324": {"err": "#REF!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"pct": 650.0}}, "price": {"p2023": 2.9, "p2024": 2.9, "p2025": 2.9, "p2026": 2.9, "raw2023": "2.9", "raw2024": "2.9", "raw2025": "2.9", "raw2026": "2.9"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 348.0, "c2026h1": 1305.0, "total": 1653.0, "rawtotal": "1653"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "CHUNG YI LING", "drug": "Ranolazine 375mg MR Tab", "cat": "KPK", "quota": "1/1", "u2023": "0", "u2024": "0", "t2324": "#REF!", "u2025": "120", "t2425": "#DIV/0!", "u2026h1": "450", "t2526": "650.00%", "usage_total": "570", "p2023": "2.9", "c2023": "0", "p2024": "2.9", "c2024": "0", "p2025": "2.9", "c2025": "348", "p2026": "2.9", "c2026h1": "1305", "cost_total": "1653", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "SUMITA", "drug": "Riociguat 1mg/ 1.5mg/ 2mg Tab", "cat": "KPK", "catKey": "OTHER", "quota": "2/10", "usage": {"y2023": 545.0, "y2024": 660.0, "y2025": 767.0, "h2026": 972.0, "total": 2944.0, "raw2023": "545", "raw2024": "660", "raw2025": "767", "raw2026": "972", "rawtotal": "2944"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"pct": 16.2}, "t2526": {"pct": 153.5}}, "price": {"p2023": 107.0, "p2024": 107.0, "p2025": 107.0, "p2026": 107.0, "raw2023": "107", "raw2024": "107", "raw2025": "107", "raw2026": "107"}, "cost": {"c2023": 58315.0, "c2024": 70620.0, "c2025": 82069.0, "c2026h1": 104004.0, "total": 315008.0, "rawtotal": "315008"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "SUMITA", "drug": "Riociguat 1mg/ 1.5mg/ 2mg Tab", "cat": "KPK", "quota": "2/10", "u2023": "545", "u2024": "660", "t2324": "#DIV/0!", "u2025": "767", "t2425": "16.21%", "u2026h1": "972", "t2526": "153.46%", "usage_total": "2944", "p2023": "107", "c2023": "58315", "p2024": "107", "c2024": "70620", "p2025": "107", "c2025": "82069", "p2026": "107", "c2026h1": "104004", "cost_total": "315008", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "CHUNG YI LING", "drug": "Sildenafil 100mg Tab", "cat": "KPK", "catKey": "OTHER", "quota": "0", "usage": {"y2023": 72618.0, "y2024": 76302.0, "y2025": 95279.0, "h2026": 46920.0, "total": 291119.0, "raw2023": "72618", "raw2024": "76302", "raw2025": "95279", "raw2026": "46920", "rawtotal": "291119"}, "trend": {"t2324": {"pct": 5.1}, "t2425": {"pct": 24.9}, "t2526": {"pct": -1.5}}, "price": {"p2023": 2.0, "p2024": 2.0, "p2025": 1.76, "p2026": 1.16, "raw2023": "2", "raw2024": "2", "raw2025": "1.76", "raw2026": "1.16"}, "cost": {"c2023": 145236.0, "c2024": 152604.0, "c2025": 0.0, "c2026h1": 54427.2, "total": 352267.2, "rawtotal": "352267.2"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "CHUNG YI LING", "drug": "Sildenafil 100mg Tab", "cat": "KPK", "quota": "0", "u2023": "72618", "u2024": "76302", "t2324": "5.1%", "u2025": "95279", "t2425": "24.87%", "u2026h1": "46920", "t2526": "-1.51%", "usage_total": "291119", "p2023": "2", "c2023": "145236", "p2024": "2", "c2024": "152604", "p2025": "1.76", "c2025": "0", "p2026": "1.16", "c2026h1": "54427.2", "cost_total": "352267.2", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "HAJAR", "drug": "Tadalafil 20mg Tab", "cat": "KPK", "catKey": "OTHER", "quota": "43/200", "usage": {"y2023": 2923.0, "y2024": 4629.0, "y2025": 4438.0, "h2026": 3081.0, "total": 15071.0, "raw2023": "2923", "raw2024": "4629", "raw2025": "4438", "raw2026": "3081", "rawtotal": "15071"}, "trend": {"t2324": {"pct": 58.4}, "t2425": {"pct": -4.1}, "t2526": {"pct": 38.9}}, "price": {"p2023": 4.18, "p2024": 4.16, "p2025": 4.34, "p2026": 3.0, "raw2023": "4.18", "raw2024": "4.16", "raw2025": "4.34", "raw2026": "3"}, "cost": {"c2023": 12218.14, "c2024": 19256.64, "c2025": 19260.92, "c2026h1": 9243.0, "total": 59978.7, "rawtotal": "59978.7"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "HAJAR", "drug": "Tadalafil 20mg Tab", "cat": "KPK", "quota": "43/200", "u2023": "2923", "u2024": "4629", "t2324": "58.4%", "u2025": "4438", "t2425": "-4.13%", "u2026h1": "3081", "t2526": "38.85%", "usage_total": "15071", "p2023": "4.18", "c2023": "12218.14", "p2024": "4.16", "c2024": "19256.64", "p2025": "4.34", "c2025": "19260.92", "p2026": "3", "c2026h1": "9243", "cost_total": "59978.7", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "RABIATUL", "drug": "Tafamidis 61mg Tab", "cat": "KPK", "catKey": "OTHER", "quota": "11/10", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 740.0, "h2026": 730.0, "total": 1470.0, "raw2023": "0", "raw2024": "0", "raw2025": "740", "raw2026": "730", "rawtotal": "1470"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"pct": 97.3}}, "price": {"p2023": 466.65, "p2024": 466.65, "p2025": 466.65, "p2026": 466.65, "raw2023": "466.65", "raw2024": "466.65", "raw2025": "466.65", "raw2026": "466.65"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 345321.0, "c2026h1": 340654.5, "total": 685975.5, "rawtotal": "685975.5"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "RABIATUL", "drug": "Tafamidis 61mg Tab", "cat": "KPK", "quota": "11/10", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "740", "t2425": "#DIV/0!", "u2026h1": "730", "t2526": "97.30%", "usage_total": "1470", "p2023": "466.65", "c2023": "0", "p2024": "466.65", "c2024": "0", "p2025": "466.65", "c2025": "345321", "p2026": "466.65", "c2026h1": "340654.5", "cost_total": "685975.5", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "HUSNA", "drug": "Ticagrelor 60mg Tab", "cat": "KPK", "catKey": "OTHER", "quota": "1/1", "usage": {"y2023": 180.0, "y2024": 852.0, "y2025": 698.0, "h2026": 490.0, "total": 2220.0, "raw2023": "180", "raw2024": "852", "raw2025": "698", "raw2026": "490", "rawtotal": "2220"}, "trend": {"t2324": {"pct": 373.3}, "t2425": {"pct": -18.1}, "t2526": {"pct": 40.4}}, "price": {"p2023": 9.83, "p2024": 9.83, "p2025": 9.83, "p2026": 9.83, "raw2023": "9.83", "raw2024": "9.83", "raw2025": "9.83", "raw2026": "9.83"}, "cost": {"c2023": 1769.4, "c2024": 8375.16, "c2025": 6861.34, "c2026h1": 4816.7, "total": 21822.6, "rawtotal": "21822.6"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "HUSNA", "drug": "Ticagrelor 60mg Tab", "cat": "KPK", "quota": "1/1", "u2023": "180", "u2024": "852", "t2324": "373.3%", "u2025": "698", "t2425": "-18.08%", "u2026h1": "490", "t2526": "40.40%", "usage_total": "2220", "p2023": "9.83", "c2023": "1769.4", "p2024": "9.83", "c2024": "8375.16", "p2025": "9.83", "c2025": "6861.34", "p2026": "9.83", "c2026h1": "4816.7", "cost_total": "21822.6", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "SAKINAH", "drug": "Mavacamten 2.5mg", "cat": "KPK", "catKey": "OTHER", "quota": "0/20", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 0.0, "h2026": 0.0, "total": 0.0, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "0", "rawtotal": "0"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 0.0, "p2024": 0.0, "p2025": 0.0, "p2026": 90.63, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "90.63"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 0.0, "total": 0.0, "rawtotal": "0"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "SAKINAH", "drug": "Mavacamten 2.5mg", "cat": "KPK", "quota": "0/20", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "0", "t2425": "#DIV/0!", "u2026h1": "0", "t2526": "#DIV/0!", "usage_total": "0", "p2023": "0", "c2023": "0", "p2024": "0", "c2024": "0", "p2025": "0", "c2025": "0", "p2026": "90.63", "c2026h1": "0", "cost_total": "0", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "SAKINAH", "drug": "Mavacamten 5mg", "cat": "KPK", "catKey": "OTHER", "quota": "3/20", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 0.0, "h2026": 220.0, "total": 220.0, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "220", "rawtotal": "220"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 0.0, "p2024": 0.0, "p2025": 0.0, "p2026": 90.63, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "90.63"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 19938.6, "total": 19938.6, "rawtotal": "19938.6"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "SAKINAH", "drug": "Mavacamten 5mg", "cat": "KPK", "quota": "3/20", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "0", "t2425": "#DIV/0!", "u2026h1": "220", "t2526": "#DIV/0!", "usage_total": "220", "p2023": "0", "c2023": "0", "p2024": "0", "c2024": "0", "p2025": "0", "c2025": "0", "p2026": "90.63", "c2026h1": "19938.6", "cost_total": "19938.6", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "SAKINAH", "drug": "Mavacamten 10mg", "cat": "KPK", "catKey": "OTHER", "quota": "2/20", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 0.0, "h2026": 0.0, "total": 0.0, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "0", "rawtotal": "0"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 0.0, "p2024": 0.0, "p2025": 0.0, "p2026": 90.63, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "90.63"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 0.0, "total": 0.0, "rawtotal": "0"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "SAKINAH", "drug": "Mavacamten 10mg", "cat": "KPK", "quota": "2/20", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "0", "t2425": "#DIV/0!", "u2026h1": "0", "t2526": "#DIV/0!", "usage_total": "0", "p2023": "0", "c2023": "0", "p2024": "0", "c2024": "0", "p2025": "0", "c2025": "0", "p2026": "90.63", "c2026h1": "0", "cost_total": "0", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK - PT (OP)", "pic": "Darwisyah", "drug": "Selexipag (all strength)", "cat": "KPK", "catKey": "OTHER", "quota": "4/10", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 0.0, "h2026": null, "total": 0.0, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "", "rawtotal": "0"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 0.0, "p2024": 0.0, "p2025": 0.0, "p2026": 69.18, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "69.18"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 0.0, "total": 0.0, "rawtotal": "0"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "Darwisyah", "drug": "Selexipag (all strength)", "cat": "KPK", "quota": "4/10", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "0", "t2425": "#DIV/0!", "u2026h1": "", "t2526": "#DIV/0!", "usage_total": "0", "p2023": "0", "c2023": "0", "p2024": "0", "c2024": "0", "p2025": "0", "c2025": "0", "p2026": "69.18", "c2026h1": "0", "cost_total": "0", "appl": "", "nonappl": "1", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Fairuzee", "drug": "Ajmaline 50mg/10ml Inj", "cat": "KPK", "catKey": "OTHER", "quota": "3/20", "usage": {"y2023": 10.0, "y2024": 24.0, "y2025": 31.0, "h2026": 3.0, "total": 68.0, "raw2023": "10", "raw2024": "24", "raw2025": "31", "raw2026": "3", "rawtotal": "68"}, "trend": {"t2324": {"pct": 140.0}, "t2425": {"pct": 29.2}, "t2526": {"pct": -80.7}}, "price": {"p2023": 38.22, "p2024": 50.72, "p2025": 48.52, "p2026": 48.52, "raw2023": "38.22", "raw2024": "50.72", "raw2025": "48.52", "raw2026": "48.52"}, "cost": {"c2023": 382.2, "c2024": 1217.28, "c2025": 1504.12, "c2026h1": 145.56, "total": 3249.16, "rawtotal": "3249.16"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "KPK IP-STOK", "pic": "Fairuzee", "drug": "Ajmaline 50mg/10ml Inj", "cat": "KPK", "quota": "3/20", "u2023": "10", "u2024": "24", "t2324": "140.0%", "u2025": "31", "t2425": "29.17%", "u2026h1": "3", "t2526": "-80.65%", "usage_total": "68", "p2023": "38.22", "c2023": "382.2", "p2024": "50.72", "c2024": "1217.28", "p2025": "48.52", "c2025": "1504.12", "p2026": "48.52", "c2026h1": "145.56", "cost_total": "3249.16", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Fairuzee", "drug": "Isoprenaline 0.2mg/ml Inj (1ml)", "cat": "KPK", "catKey": "OTHER", "quota": "1028/2000", "usage": {"y2023": 582.0, "y2024": 924.0, "y2025": 1006.0, "h2026": 935.0, "total": 3447.0, "raw2023": "582", "raw2024": "924", "raw2025": "1006", "raw2026": "935", "rawtotal": "3447"}, "trend": {"t2324": {"pct": 58.8}, "t2425": {"pct": 8.9}, "t2526": {"pct": 85.9}}, "price": {"p2023": 8.0, "p2024": 6.0, "p2025": 6.0, "p2026": 6.8, "raw2023": "8", "raw2024": "6", "raw2025": "6", "raw2026": "6.8"}, "cost": {"c2023": 4656.0, "c2024": 5544.0, "c2025": 6036.0, "c2026h1": 6358.0, "total": null, "rawtotal": ""}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "Fairuzee", "drug": "Isoprenaline 0.2mg/ml Inj (1ml)", "cat": "KPK", "quota": "1028/2000", "u2023": "582", "u2024": "924", "t2324": "58.8%", "u2025": "1006", "t2425": "8.87%", "u2026h1": "935", "t2526": "85.88%", "usage_total": "3447", "p2023": "8", "c2023": "4656", "p2024": "6", "c2024": "5544", "p2025": "6", "c2025": "6036", "p2026": "6.8", "c2026h1": "6358", "cost_total": "", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Fairuzee", "drug": "Iloprost Nebulising Solution 20mcg/2ml", "cat": "KPK", "catKey": "OTHER", "quota": "1047/750", "usage": {"y2023": 0.0, "y2024": 20.0, "y2025": 120.0, "h2026": 749.0, "total": 889.0, "raw2023": "0", "raw2024": "20", "raw2025": "120", "raw2026": "749", "rawtotal": "889"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"pct": 500.0}, "t2526": {"pct": 1148.3}}, "price": {"p2023": 71.993, "p2024": 37.5, "p2025": 104.933, "p2026": 104.0, "raw2023": "71.993", "raw2024": "37.5", "raw2025": "104.933", "raw2026": "104"}, "cost": {"c2023": 0.0, "c2024": 750.0, "c2025": 12591.96, "c2026h1": 77896.0, "total": 91237.96, "rawtotal": "91237.96"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "Fairuzee", "drug": "Iloprost Nebulising Solution 20mcg/2ml", "cat": "KPK", "quota": "1047/750", "u2023": "0", "u2024": "20", "t2324": "#DIV/0!", "u2025": "120", "t2425": "500.00%", "u2026h1": "749", "t2526": "1148.33%", "usage_total": "889", "p2023": "71.993", "c2023": "0", "p2024": "37.5", "c2024": "750", "p2025": "104.933", "c2025": "12591.96", "p2026": "104", "c2026h1": "77896", "cost_total": "91237.96", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Fairuzee", "drug": "Sulph Hexafluoride Microbubbles 8mcl/ml Inj (Sonovue)", "cat": "KPK", "catKey": "OTHER", "quota": "20/25", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 10.0, "h2026": 10.0, "total": 20.0, "raw2023": "0", "raw2024": "0", "raw2025": "10", "raw2026": "10", "rawtotal": "20"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"pct": 100.0}}, "price": {"p2023": 0.0, "p2024": 0.0, "p2025": 520.0, "p2026": 557.0, "raw2023": "0", "raw2024": "0", "raw2025": "520", "raw2026": "557"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 5200.0, "c2026h1": 5570.0, "total": 10770.0, "rawtotal": "10770"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "Fairuzee", "drug": "Sulph Hexafluoride Microbubbles 8mcl/ml Inj (Sonovue)", "cat": "KPK", "quota": "20/25", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "10", "t2425": "#DIV/0!", "u2026h1": "10", "t2526": "100.00%", "usage_total": "20", "p2023": "0", "c2023": "0", "p2024": "0", "c2024": "0", "p2025": "520", "c2025": "5200", "p2026": "557", "c2026h1": "5570", "cost_total": "10770", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Fairuzee", "drug": "Metolazone 5mg Tablet", "cat": "KPK", "catKey": "OTHER", "quota": "2120/10000", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 2586.0, "h2026": 1982.0, "total": 4568.0, "raw2023": "0", "raw2024": "0", "raw2025": "2586", "raw2026": "1982", "rawtotal": "4568"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"pct": 53.3}}, "price": {"p2023": 0.0, "p2024": 0.0, "p2025": 0.45, "p2026": 0.354, "raw2023": "0", "raw2024": "0", "raw2025": "0.45", "raw2026": "0.354"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 1163.7, "c2026h1": 701.628, "total": 1865.328, "rawtotal": "1865.328"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "Fairuzee", "drug": "Metolazone 5mg Tablet", "cat": "KPK", "quota": "2120/10000", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "2586", "t2425": "#DIV/0!", "u2026h1": "1982", "t2526": "53.29%", "usage_total": "4568", "p2023": "0", "c2023": "0", "p2024": "0", "c2024": "0", "p2025": "0.45", "c2025": "1163.7", "p2026": "0.354", "c2026h1": "701.628", "cost_total": "1865.328", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Fairuzee", "drug": "Tolvaptan 15mg Tablet", "cat": "KPK", "catKey": "OTHER", "quota": "58/50", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 0.0, "h2026": 45.0, "total": 45.0, "raw2023": "0", "raw2024": "0", "raw2025": "0", "raw2026": "45", "rawtotal": "45"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 0.0, "p2024": 0.0, "p2025": 63.819, "p2026": 63.756, "raw2023": "0", "raw2024": "0", "raw2025": "63.819", "raw2026": "63.756"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 2869.02, "total": 2869.02, "rawtotal": "2869.02"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "Fairuzee", "drug": "Tolvaptan 15mg Tablet", "cat": "KPK", "quota": "58/50", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "0", "t2425": "#DIV/0!", "u2026h1": "45", "t2526": "#DIV/0!", "usage_total": "45", "p2023": "0", "c2023": "0", "p2024": "0", "c2024": "0", "p2025": "63.819", "c2025": "0", "p2026": "63.756", "c2026h1": "2869.02", "cost_total": "2869.02", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}]}, {"name": "CTC", "drugs": [{"no": "-", "status": "PUB-IP", "pic": "Jenna", "drug": "Oxycodone HCl 10mg/ml Injection", "cat": "A*", "catKey": "A*", "quota": "503/1200", "usage": {"y2023": 754.0, "y2024": 742.0, "y2025": 841.0, "h2026": 503.0, "total": 2840.0, "raw2023": "754", "raw2024": "742", "raw2025": "841", "raw2026": "503", "rawtotal": "2840"}, "trend": {"t2324": {"pct": -1.6}, "t2425": {"pct": 13.3}, "t2526": {"pct": 19.6}}, "price": {"p2023": 9.54, "p2024": 9.52, "p2025": 9.46, "p2026": 9.46, "raw2023": "9.54", "raw2024": "9.52", "raw2025": "9.46", "raw2026": "9.46"}, "cost": {"c2023": 7193.16, "c2024": 7063.84, "c2025": 7955.86, "c2026h1": 4758.38, "total": 26971.24, "rawtotal": "26971.24"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "PUB-IP", "pic": "Jenna", "drug": "Oxycodone HCl 10mg/ml Injection", "cat": "A*", "quota": "503/1200", "u2023": "754", "u2024": "742", "t2324": "-1.6%", "u2025": "841", "t2425": "13.34%", "u2026h1": "503", "t2526": "19.62%", "usage_total": "2840", "p2023": "9.54", "c2023": "7193.16", "p2024": "9.52", "c2024": "7063.84", "p2025": "9.46", "c2025": "7955.86", "p2026": "9.46", "c2026h1": "4758.38", "cost_total": "26971.24", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-IP", "pic": "Jenna", "drug": "Oxycodone 10mg Immediate Release Tab", "cat": "A*", "catKey": "A*", "quota": "OPEN", "usage": {"y2023": 6914.0, "y2024": 6538.0, "y2025": 6059.0, "h2026": 1871.0, "total": 21382.0, "raw2023": "6914", "raw2024": "6538", "raw2025": "6059", "raw2026": "1871", "rawtotal": "21382"}, "trend": {"t2324": {"pct": -5.4}, "t2425": {"pct": -7.3}, "t2526": {"pct": -38.2}}, "price": {"p2023": 2.625, "p2024": 2.615, "p2025": 2.625, "p2026": 2.623, "raw2023": "2.625", "raw2024": "2.615", "raw2025": "2.625", "raw2026": "2.623"}, "cost": {"c2023": 18149.25, "c2024": 17096.87, "c2025": 15904.875, "c2026h1": 4907.633, "total": 56058.628, "rawtotal": "56058.628"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "OPEN PUB-IP", "pic": "Jenna", "drug": "Oxycodone 10mg Immediate Release Tab", "cat": "A*", "quota": "OPEN", "u2023": "6914", "u2024": "6538", "t2324": "-5.4%", "u2025": "6059", "t2425": "-7.33%", "u2026h1": "1871", "t2526": "-38.24%", "usage_total": "21382", "p2023": "2.625", "c2023": "18149.25", "p2024": "2.615", "c2024": "17096.87", "p2025": "2.625", "c2025": "15904.875", "p2026": "2.623", "c2026h1": "4907.633", "cost_total": "56058.628", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Jenna", "drug": "Indocyanine Green 25mg/10ml Injection", "cat": "KPK", "catKey": "OTHER", "quota": "11/50", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 2.0, "h2026": 11.0, "total": 13.0, "raw2023": "0", "raw2024": "0", "raw2025": "2", "raw2026": "11", "rawtotal": "13"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"pct": 2.0}}, "price": {"p2023": 0.0, "p2024": 0.0, "p2025": 70.0, "p2026": 70.0, "raw2023": "0", "raw2024": "0", "raw2025": "70", "raw2026": "70"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 140.0, "c2026h1": 770.0, "total": 910.0, "rawtotal": "910"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "KPK IP-STOK", "pic": "Jenna", "drug": "Indocyanine Green 25mg/10ml Injection", "cat": "KPK", "quota": "11/50", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "2", "t2425": "#DIV/0!", "u2026h1": "11", "t2526": "2.00%", "usage_total": "13", "p2023": "0", "c2023": "0", "p2024": "0", "c2024": "0", "p2025": "70", "c2025": "140", "p2026": "70", "c2026h1": "770", "cost_total": "910", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Jenna", "drug": "Papaverine 25mg/ml Inj", "cat": "A / KPK", "catKey": "OTHER", "quota": "200/600", "usage": {"y2023": 468.0, "y2024": 480.0, "y2025": 430.0, "h2026": 200.0, "total": 1578.0, "raw2023": "468", "raw2024": "480", "raw2025": "430", "raw2026": "200", "rawtotal": "1578"}, "trend": {"t2324": {"pct": 2.6}, "t2425": {"pct": -10.4}, "t2526": {"pct": -7.0}}, "price": {"p2023": 23.9, "p2024": 9.5, "p2025": 8.0, "p2026": 8.0, "raw2023": "23.9", "raw2024": "9.5", "raw2025": "8", "raw2026": "8"}, "cost": {"c2023": 11185.2, "c2024": 4560.0, "c2025": 3440.0, "c2026h1": 1600.0, "total": 20785.2, "rawtotal": "20785.2"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'A / KPK'."], "raw": {"no": "", "status": "", "pic": "Jenna", "drug": "Papaverine 25mg/ml Inj", "cat": "A / KPK", "quota": "200/600", "u2023": "468", "u2024": "480", "t2324": "2.6%", "u2025": "430", "t2425": "-10.42%", "u2026h1": "200", "t2526": "-6.98%", "usage_total": "1578", "p2023": "23.9", "c2023": "11185.2", "p2024": "9.5", "c2024": "4560", "p2025": "8", "c2025": "3440", "p2026": "8", "c2026h1": "1600", "cost_total": "20785.2", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}]}, {"name": "PAEDS CARDIOLOGY", "drugs": [{"no": "-", "status": "PUB-OP", "pic": "Ain Jazilah", "drug": "Tab Bosentan 125mg", "cat": "A*", "catKey": "A*", "quota": "53/55", "usage": {"y2023": 3610.0, "y2024": 9848.0, "y2025": 31764.0, "h2026": 29366.0, "total": 74588.0, "raw2023": "3610", "raw2024": "9848", "raw2025": "31764", "raw2026": "29366", "rawtotal": "74588"}, "trend": {"t2324": {"pct": 172.8}, "t2425": {"pct": 222.5}, "t2526": {"pct": 84.9}}, "price": {"p2023": 53.3, "p2024": 53.3, "p2025": 19.2, "p2026": 28.8, "raw2023": "53.3", "raw2024": "53.3", "raw2025": "19.2", "raw2026": "28.8"}, "cost": {"c2023": 192413.0, "c2024": 524898.4, "c2025": 609868.8, "c2026h1": 845740.8, "total": 2172921.0, "rawtotal": "2172921"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Cardio", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "PUB-OP", "pic": "Ain Jazilah", "drug": "Tab Bosentan 125mg", "cat": "A*", "quota": "53/55", "u2023": "3610", "u2024": "9848", "t2324": "172.8%", "u2025": "31764", "t2425": "222.54%", "u2026h1": "29366", "t2526": "84.90%", "usage_total": "74588", "p2023": "53.3", "c2023": "192413", "p2024": "53.3", "c2024": "524898.4", "p2025": "19.2", "c2025": "609868.8", "p2026": "28.8", "c2026h1": "845740.8", "cost_total": "2172921", "appl": "", "nonappl": "1", "other_disc": "Cardio", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-OP", "pic": "Christina", "drug": "Tab Flecainide Acetate 100 mg", "cat": "A*", "catKey": "A*", "quota": "25/35", "usage": {"y2023": 17589.0, "y2024": 28690.0, "y2025": 42198.0, "h2026": 30646.0, "total": 119123.0, "raw2023": "17589", "raw2024": "28690", "raw2025": "42198", "raw2026": "30646", "rawtotal": "119123"}, "trend": {"t2324": {"pct": 63.1}, "t2425": {"pct": 47.1}, "t2526": {"pct": 45.2}}, "price": {"p2023": 4.45, "p2024": 4.45, "p2025": 4.68, "p2026": 4.68, "raw2023": "4.45", "raw2024": "4.45", "raw2025": "4.68", "raw2026": "4.68"}, "cost": {"c2023": 78271.05, "c2024": 127670.5, "c2025": 197486.64, "c2026h1": 143423.28, "total": 546851.47, "rawtotal": "546851.47"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Cardio", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "Christina", "drug": "Tab Flecainide Acetate 100 mg", "cat": "A*", "quota": "25/35", "u2023": "17589", "u2024": "28690", "t2324": "63.1%", "u2025": "42198", "t2425": "47.08%", "u2026h1": "30646", "t2526": "45.25%", "usage_total": "119123", "p2023": "4.45", "c2023": "78271.05", "p2024": "4.45", "c2024": "127670.5", "p2025": "4.68", "c2025": "197486.64", "p2026": "4.68", "c2026h1": "143423.28", "cost_total": "546851.47", "appl": "", "nonappl": "1", "other_disc": "Cardio", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-OP", "pic": "Sumita", "drug": "Tab Macitentan 10mg", "cat": "A*", "catKey": "A*", "quota": "2/2", "usage": {"y2023": null, "y2024": 480.0, "y2025": 2336.0, "h2026": 5294.0, "total": null, "raw2023": "-", "raw2024": "480", "raw2025": "2336", "raw2026": "5294", "rawtotal": "#VALUE!"}, "trend": {"t2324": {"err": "#VALUE!"}, "t2425": {"pct": 386.7}, "t2526": {"pct": 353.2}}, "price": {"p2023": 279.79, "p2024": 118.17, "p2025": 116.78, "p2026": 94.34, "raw2023": "279.79", "raw2024": "118.17", "raw2025": "116.78", "raw2026": "94.34"}, "cost": {"c2023": null, "c2024": 56721.6, "c2025": 272798.08, "c2026h1": 499435.96, "total": null, "rawtotal": "#VALUE!"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Cardio", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "Sumita", "drug": "Tab Macitentan 10mg", "cat": "A*", "quota": "2/2", "u2023": "-", "u2024": "480", "t2324": "#VALUE!", "u2025": "2336", "t2425": "386.67%", "u2026h1": "5294", "t2526": "353.25%", "usage_total": "#VALUE!", "p2023": "279.79", "c2023": "#VALUE!", "p2024": "118.17", "c2024": "56721.6", "p2025": "116.78", "c2025": "272798.08", "p2026": "94.34", "c2026h1": "499435.96", "cost_total": "#VALUE!", "appl": "", "nonappl": "1", "other_disc": "Cardio", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-OP", "pic": "Christina", "drug": "Inj Palivizumab 100mg", "cat": "A*", "catKey": "A*", "quota": "6 vials used", "usage": {"y2023": 71.0, "y2024": 87.0, "y2025": 99.0, "h2026": 49.0, "total": 306.0, "raw2023": "71", "raw2024": "87", "raw2025": "99", "raw2026": "49", "rawtotal": "306"}, "trend": {"t2324": {"pct": 22.5}, "t2425": {"pct": 13.8}, "t2526": {"pct": -1.0}}, "price": {"p2023": 3676.0, "p2024": 3653.3, "p2025": 3653.3, "p2026": 3653.3, "raw2023": "3676", "raw2024": "3653.3", "raw2025": "3653.3", "raw2026": "3653.3"}, "cost": {"c2023": 260996.0, "c2024": 317837.1, "c2025": 361676.7, "c2026h1": 179011.7, "total": 1119521.5, "rawtotal": "1119521.5"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "Peads", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "Christina", "drug": "Inj Palivizumab 100mg", "cat": "A*", "quota": "6 vials used", "u2023": "71", "u2024": "87", "t2324": "22.5%", "u2025": "99", "t2425": "13.79%", "u2026h1": "49", "t2526": "-1.01%", "usage_total": "306", "p2023": "3676", "c2023": "260996", "p2024": "3653.3", "c2024": "317837.1", "p2025": "3653.3", "c2025": "361676.7", "p2026": "3653.3", "c2026h1": "179011.7", "cost_total": "1119521.5", "appl": "", "nonappl": "", "other_disc": "Peads", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-OP", "pic": "Rabiatul", "drug": "Tab Rivaroxaban 20mg", "cat": "A*", "catKey": "A*", "quota": "6/7", "usage": {"y2023": 29415.0, "y2024": 48942.0, "y2025": 102133.0, "h2026": 59632.0, "total": 240122.0, "raw2023": "29415", "raw2024": "48942", "raw2025": "102133", "raw2026": "59632", "rawtotal": "240122"}, "trend": {"t2324": {"pct": 66.4}, "t2425": {"pct": 108.7}, "t2526": {"pct": 16.8}}, "price": {"p2023": 6.74, "p2024": 6.74, "p2025": 3.46, "p2026": 1.881, "raw2023": "6.74", "raw2024": "6.74", "raw2025": "3.46", "raw2026": "1.881"}, "cost": {"c2023": 198257.1, "c2024": 329869.08, "c2025": 353380.18, "c2026h1": 112167.792, "total": 993674.152, "rawtotal": "993674.152"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Medical (50), Paeds Cardio (7)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "Rabiatul", "drug": "Tab Rivaroxaban 20mg", "cat": "A*", "quota": "6/7", "u2023": "29415", "u2024": "48942", "t2324": "66.4%", "u2025": "102133", "t2425": "108.68%", "u2026h1": "59632", "t2526": "16.77%", "usage_total": "240122", "p2023": "6.74", "c2023": "198257.1", "p2024": "6.74", "c2024": "329869.08", "p2025": "3.46", "c2025": "353380.18", "p2026": "1.881", "c2026h1": "112167.792", "cost_total": "993674.152", "appl": "", "nonappl": "1", "other_disc": "Medical (50), Paeds Cardio (7)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-OP", "pic": "Shanaz", "drug": "Tab Sacubitril/Valsartan 50mg&100mg (Combined Quota)", "cat": "A*", "catKey": "A*", "quota": "10/30", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 600.0, "h2026": 2520.0, "total": 52062.0, "raw2023": "0", "raw2024": "0", "raw2025": "600", "raw2026": "2520", "rawtotal": "52062"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"pct": -98.8}, "t2526": {"pct": 740.0}}, "price": {"p2023": 3.79, "p2024": 3.79, "p2025": 3.79, "p2026": 3.79, "raw2023": "3.79", "raw2024": "3.79", "raw2025": "3.79", "raw2026": "3.79"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 2274.0, "c2026h1": 9550.8, "total": 11824.8, "rawtotal": "11824.8"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "Shanaz", "drug": "Tab Sacubitril/Valsartan 50mg&100mg (Combined Quota)", "cat": "A*", "quota": "10/30", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "600", "t2425": "-98.77%", "u2026h1": "2520", "t2526": "740.00%", "usage_total": "52062", "p2023": "3.79", "c2023": "0", "p2024": "3.79", "c2024": "0", "p2025": "3.79", "c2025": "2274", "p2026": "3.79", "c2026h1": "9550.8", "cost_total": "11824.8", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-OPEN OP", "pic": "Husna", "drug": "Dapagliflozin 10mg", "cat": "A*", "catKey": "A*", "quota": "open", "usage": {"y2023": 7522.0, "y2024": 29538.0, "y2025": 126588.0, "h2026": 158954.0, "total": 322602.0, "raw2023": "7522", "raw2024": "29538", "raw2025": "126588", "raw2026": "158954", "rawtotal": "322602"}, "trend": {"t2324": {"pct": 292.7}, "t2425": {"pct": 328.6}, "t2526": {"pct": 151.1}}, "price": {"p2023": 1.37, "p2024": 0.78, "p2025": 0.77, "p2026": 0.77, "raw2023": "1.37", "raw2024": "0.78", "raw2025": "0.77", "raw2026": "0.77"}, "cost": {"c2023": 10305.14, "c2024": 23039.64, "c2025": 97472.76, "c2026h1": 122394.58, "total": 253212.12, "rawtotal": "253212.12"}, "dosePerPack": 1.0, "appl": {"isAppl": true, "isNon": false, "note": "", "label": "APPL"}, "gov": {"otherDisc": "Medical (OPEN), Nephro (OPEN), Cardio (OPEN)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "PUB-OPEN OP", "pic": "Husna", "drug": "Dapagliflozin 10mg", "cat": "A*", "quota": "open", "u2023": "7522", "u2024": "29538", "t2324": "292.7%", "u2025": "126588", "t2425": "328.56%", "u2026h1": "158954", "t2526": "151.14%", "usage_total": "322602", "p2023": "1.37", "c2023": "10305.14", "p2024": "0.78", "c2024": "23039.64", "p2025": "0.77", "c2025": "97472.76", "p2026": "0.77", "c2026h1": "122394.58", "cost_total": "253212.12", "appl": "1", "nonappl": "", "other_disc": "Medical (OPEN), Nephro (OPEN), Cardio (OPEN)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-OPEN OP", "pic": "Husna", "drug": "Empagliflozin 10 mg", "cat": "A*", "catKey": "A*", "quota": "open", "usage": {"y2023": 76490.0, "y2024": 151704.0, "y2025": 306937.0, "h2026": 401228.0, "total": 936359.0, "raw2023": "76490", "raw2024": "151704", "raw2025": "306937", "raw2026": "401228", "rawtotal": "936359"}, "trend": {"t2324": {"pct": 98.3}, "t2425": {"pct": 102.3}, "t2526": {"pct": 161.4}}, "price": {"p2023": 1.7, "p2024": 1.68, "p2025": 1.66, "p2026": 1.66, "raw2023": "1.7", "raw2024": "1.68", "raw2025": "1.66", "raw2026": "1.66"}, "cost": {"c2023": 130033.0, "c2024": 254862.72, "c2025": 509515.42, "c2026h1": 666038.48, "total": 1560449.62, "rawtotal": "1560449.62"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": true, "note": "", "label": "NON-APPL"}, "gov": {"otherDisc": "Medical (OPEN), Cardio (OPEN)", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "Husna", "drug": "Empagliflozin 10 mg", "cat": "A*", "quota": "open", "u2023": "76490", "u2024": "151704", "t2324": "98.3%", "u2025": "306937", "t2425": "102.33%", "u2026h1": "401228", "t2526": "161.44%", "usage_total": "936359", "p2023": "1.7", "c2023": "130033", "p2024": "1.68", "c2024": "254862.72", "p2025": "1.66", "c2025": "509515.42", "p2026": "1.66", "c2026h1": "666038.48", "cost_total": "1560449.62", "appl": "", "nonappl": "1", "other_disc": "Medical (OPEN), Cardio (OPEN)", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-IP", "pic": "Aisya", "drug": "Inj Alteplase 50 mg", "cat": "A*", "catKey": "A*", "quota": "16/18", "usage": {"y2023": 3.0, "y2024": 2.0, "y2025": 2.0, "h2026": 16.0, "total": 23.0, "raw2023": "3", "raw2024": "2", "raw2025": "2", "raw2026": "16", "rawtotal": "23"}, "trend": {"t2324": {"pct": -33.3}, "t2425": {"pct": 0.0}, "t2526": {"pct": 1500.0}}, "price": {"p2023": 2310.0, "p2024": 2310.0, "p2025": 2400.0, "p2026": 2400.0, "raw2023": "2310", "raw2024": "2310", "raw2025": "2400", "raw2026": "2400"}, "cost": {"c2023": 6930.0, "c2024": 4620.0, "c2025": 4800.0, "c2026h1": 38400.0, "total": 54750.0, "rawtotal": "54750"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "sharing Cardio", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "PUB-IP", "pic": "Aisya", "drug": "Inj Alteplase 50 mg", "cat": "A*", "quota": "16/18", "u2023": "3", "u2024": "2", "t2324": "-33.3%", "u2025": "2", "t2425": "0.00%", "u2026h1": "16", "t2526": "1500.00%", "usage_total": "23", "p2023": "2310", "c2023": "6930", "p2024": "2310", "c2024": "4620", "p2025": "2400", "c2025": "4800", "p2026": "2400", "c2026h1": "38400", "cost_total": "54750", "appl": "", "nonappl": "", "other_disc": "sharing Cardio", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-IP", "pic": "Aisya", "drug": "Inj Granisetron 1mg/ml", "cat": "A*", "catKey": "A*", "quota": "126/200", "usage": {"y2023": 2.0, "y2024": 22.0, "y2025": 94.0, "h2026": 126.0, "total": 244.0, "raw2023": "2", "raw2024": "22", "raw2025": "94", "raw2026": "126", "rawtotal": "244"}, "trend": {"t2324": {"pct": 1000.0}, "t2425": {"pct": 327.3}, "t2526": {"pct": 168.1}}, "price": {"p2023": 9.13, "p2024": 9.13, "p2025": 3.85, "p2026": 3.85, "raw2023": "9.13", "raw2024": "9.13", "raw2025": "3.85", "raw2026": "3.85"}, "cost": {"c2023": 18.26, "c2024": 200.86, "c2025": 361.9, "c2026h1": 485.1, "total": 1066.12, "rawtotal": "1066.12"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "Aisya", "drug": "Inj Granisetron 1mg/ml", "cat": "A*", "quota": "126/200", "u2023": "2", "u2024": "22", "t2324": "1000.0%", "u2025": "94", "t2425": "327.27%", "u2026h1": "126", "t2526": "168.09%", "usage_total": "244", "p2023": "9.13", "c2023": "18.26", "p2024": "9.13", "c2024": "200.86", "p2025": "3.85", "c2025": "361.9", "p2026": "3.85", "c2026h1": "485.1", "cost_total": "1066.12", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-IP", "pic": "Christina", "drug": "Tab Sirolimus 1mg", "cat": "KPK", "catKey": "OTHER", "quota": "0", "usage": {"y2023": 1673.0, "y2024": 1201.0, "y2025": 1179.0, "h2026": 938.0, "total": 4991.0, "raw2023": "1673", "raw2024": "1201", "raw2025": "1179", "raw2026": "938", "rawtotal": "4991"}, "trend": {"t2324": {"pct": -28.2}, "t2425": {"pct": -1.8}, "t2526": {"pct": 59.1}}, "price": {"p2023": 31.96, "p2024": 31.96, "p2025": 33.65, "p2026": 33.65, "raw2023": "31.96", "raw2024": "31.96", "raw2025": "33.65", "raw2026": "33.65"}, "cost": {"c2023": 53469.08, "c2024": 38383.96, "c2025": 39673.35, "c2026h1": 31563.7, "total": 163090.09, "rawtotal": "163090.09"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "PAC, ORL, Peads", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "Christina", "drug": "Tab Sirolimus 1mg", "cat": "KPK", "quota": "0", "u2023": "1673", "u2024": "1201", "t2324": "-28.2%", "u2025": "1179", "t2425": "-1.83%", "u2026h1": "938", "t2526": "59.12%", "usage_total": "4991", "p2023": "31.96", "c2023": "53469.08", "p2024": "31.96", "c2024": "38383.96", "p2025": "33.65", "c2025": "39673.35", "p2026": "33.65", "c2026h1": "31563.7", "cost_total": "163090.09", "appl": "", "nonappl": "", "other_disc": "PAC, ORL, Peads", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-IP", "pic": "", "drug": "TADALAFIL", "cat": "KPK", "catKey": "OTHER", "quota": "", "usage": {"y2023": null, "y2024": null, "y2025": null, "h2026": null, "total": null, "raw2023": "", "raw2024": "", "raw2025": "", "raw2026": "", "rawtotal": ""}, "trend": {"t2324": {}, "t2425": {}, "t2526": {}}, "price": {"p2023": 4.18, "p2024": 4.16, "p2025": 4.34, "p2026": 3.0, "raw2023": "4.18", "raw2024": "4.16", "raw2025": "4.34", "raw2026": "3"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 0.0, "c2026h1": 0.0, "total": 0.0, "rawtotal": "0"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "", "drug": "TADALAFIL", "cat": "KPK", "quota": "", "u2023": "", "u2024": "", "t2324": "", "u2025": "", "t2425": "", "u2026h1": "", "t2526": "", "usage_total": "", "p2023": "4.18", "c2023": "0", "p2024": "4.16", "c2024": "0", "p2025": "4.34", "c2025": "0", "p2026": "3", "c2026h1": "0", "cost_total": "0", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-IP", "pic": "Husna", "drug": "Tab Metolazone 2.5mg", "cat": "KPK", "catKey": "OTHER", "quota": "1/1", "usage": {"y2023": 3239.0, "y2024": null, "y2025": null, "h2026": null, "total": 3239.0, "raw2023": "3239", "raw2024": "", "raw2025": "", "raw2026": "", "rawtotal": "3239"}, "trend": {"t2324": {"pct": -100.0}, "t2425": {"err": "#DIV/0!"}, "t2526": {"err": "#DIV/0!"}}, "price": {"p2023": 0.9, "p2024": 0.35, "p2025": 0.6, "p2026": 0.6, "raw2023": "0.9", "raw2024": "0.35", "raw2025": "0.6", "raw2026": "0.6"}, "cost": {"c2023": 2915.1, "c2024": 0.0, "c2025": 0.0, "c2026h1": 0.0, "total": 2915.1, "rawtotal": "2915.1"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "Nephro, Cardio", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "Husna", "drug": "Tab Metolazone 2.5mg", "cat": "KPK", "quota": "1/1", "u2023": "3239", "u2024": "", "t2324": "-100.0%", "u2025": "", "t2425": "#DIV/0!", "u2026h1": "", "t2526": "#DIV/0!", "usage_total": "3239", "p2023": "0.9", "c2023": "2915.1", "p2024": "0.35", "c2024": "0", "p2025": "0.6", "c2025": "0", "p2026": "0.6", "c2026h1": "0", "cost_total": "2915.1", "appl": "", "nonappl": "", "other_disc": "Nephro, Cardio", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-PT", "pic": "Aisya", "drug": "Tab Clonidine 0.025mg", "cat": "KPK", "catKey": "OTHER", "quota": "1400/1440", "usage": {"y2023": null, "y2024": 2240.0, "y2025": 2250.0, "h2026": 1440.0, "total": 5930.0, "raw2023": "-", "raw2024": "2240", "raw2025": "2250", "raw2026": "1440", "rawtotal": "5930"}, "trend": {"t2324": {"err": "-%"}, "t2425": {"pct": 0.5}, "t2526": {"pct": 28.0}}, "price": {"p2023": 1.796, "p2024": 1.05, "p2025": 1.0, "p2026": 0.57, "raw2023": "1.796", "raw2024": "1.05", "raw2025": "1", "raw2026": "0.57"}, "cost": {"c2023": null, "c2024": 2352.0, "c2025": 2250.0, "c2026h1": 820.8, "total": null, "rawtotal": "#VALUE!"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "KPK IP-PT", "pic": "Aisya", "drug": "Tab Clonidine 0.025mg", "cat": "KPK", "quota": "1400/1440", "u2023": "-", "u2024": "2240", "t2324": "-%", "u2025": "2250", "t2425": "0.45%", "u2026h1": "1440", "t2526": "28.00%", "usage_total": "5930", "p2023": "1.796", "c2023": "#VALUE!", "p2024": "1.05", "c2024": "2352", "p2025": "1", "c2025": "2250", "p2026": "0.57", "c2026h1": "820.8", "cost_total": "#VALUE!", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Aisya", "drug": "T. Melatonin 3mg", "cat": "KPK", "catKey": "OTHER", "quota": "778/2000", "usage": {"y2023": 110.0, "y2024": 342.0, "y2025": 405.0, "h2026": 778.0, "total": 1635.0, "raw2023": "110", "raw2024": "342", "raw2025": "405", "raw2026": "778", "rawtotal": "1635"}, "trend": {"t2324": {"pct": 210.9}, "t2425": {"pct": 18.4}, "t2526": {"pct": 284.2}}, "price": {"p2023": 0.49, "p2024": 0.39, "p2025": 0.195, "p2026": 0.138, "raw2023": "0.49", "raw2024": "0.39", "raw2025": "0.195", "raw2026": "0.138"}, "cost": {"c2023": 53.9, "c2024": 133.38, "c2025": 78.975, "c2026h1": 107.364, "total": 373.619, "rawtotal": "373.619"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "KPK IP-STOK", "pic": "Aisya", "drug": "T. Melatonin 3mg", "cat": "KPK", "quota": "778/2000", "u2023": "110", "u2024": "342", "t2324": "210.9%", "u2025": "405", "t2425": "18.42%", "u2026h1": "778", "t2526": "284.20%", "usage_total": "1635", "p2023": "0.49", "c2023": "53.9", "p2024": "0.39", "c2024": "133.38", "p2025": "0.195", "c2025": "78.975", "p2026": "0.138", "c2026h1": "107.364", "cost_total": "373.619", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Aisya", "drug": "Tab Clonidine 0.025mg", "cat": "KPK", "catKey": "OTHER", "quota": "6056/6900", "usage": {"y2023": 2675.0, "y2024": 4446.0, "y2025": 5032.0, "h2026": 6056.0, "total": 18209.0, "raw2023": "2675", "raw2024": "4446", "raw2025": "5032", "raw2026": "6056", "rawtotal": "18209"}, "trend": {"t2324": {"pct": 66.2}, "t2425": {"pct": 13.2}, "t2526": {"pct": 140.7}}, "price": {"p2023": 1.796, "p2024": 1.05, "p2025": 1.0, "p2026": 0.57, "raw2023": "1.796", "raw2024": "1.05", "raw2025": "1", "raw2026": "0.57"}, "cost": {"c2023": 4804.3, "c2024": 4668.3, "c2025": 5032.0, "c2026h1": 3451.92, "total": 17956.52, "rawtotal": "17956.52"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "Aisya", "drug": "Tab Clonidine 0.025mg", "cat": "KPK", "quota": "6056/6900", "u2023": "2675", "u2024": "4446", "t2324": "66.2%", "u2025": "5032", "t2425": "13.18%", "u2026h1": "6056", "t2526": "140.70%", "usage_total": "18209", "p2023": "1.796", "c2023": "4804.3", "p2024": "1.05", "c2024": "4668.3", "p2025": "1", "c2025": "5032", "p2026": "0.57", "c2026h1": "3451.92", "cost_total": "17956.52", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}]}, {"name": "KAP", "drugs": [{"no": "-", "status": "PUB-IP", "pic": "Nasrun", "drug": "Cisatracurium Besylate 10mg/5ml Inj", "cat": "A*", "catKey": "A*", "quota": "25 vials", "usage": {"y2023": 0.0, "y2024": 0.0, "y2025": 50.0, "h2026": 50.0, "total": 100.0, "raw2023": "0", "raw2024": "0", "raw2025": "50", "raw2026": "50", "rawtotal": "100"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"err": "#DIV/0!"}, "t2526": {"pct": 100.0}}, "price": {"p2023": 0.0, "p2024": 19.25, "p2025": 19.25, "p2026": 21.7, "raw2023": "0", "raw2024": "19.25", "raw2025": "19.25", "raw2026": "21.7"}, "cost": {"c2023": 0.0, "c2024": 0.0, "c2025": 962.5, "c2026h1": 1085.0, "total": 2047.5, "rawtotal": "2047.5"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "PUB-IP", "pic": "Nasrun", "drug": "Cisatracurium Besylate 10mg/5ml Inj", "cat": "A*", "quota": "25 vials", "u2023": "0", "u2024": "0", "t2324": "#DIV/0!", "u2025": "50", "t2425": "#DIV/0!", "u2026h1": "50", "t2526": "100.00%", "usage_total": "100", "p2023": "0", "c2023": "0", "p2024": "19.25", "c2024": "0", "p2025": "19.25", "c2025": "962.5", "p2026": "21.7", "c2026h1": "1085", "cost_total": "2047.5", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "PUB-IP", "pic": "Nasrun", "drug": "Hydroxocobalamin 5g Inj", "cat": "A*", "catKey": "A*", "quota": "25 sets", "usage": {"y2023": 4.0, "y2024": 19.0, "y2025": 27.0, "h2026": 4.0, "total": 54.0, "raw2023": "4", "raw2024": "19", "raw2025": "27", "raw2026": "4", "rawtotal": "54"}, "trend": {"t2324": {"pct": 375.0}, "t2425": {"pct": 42.1}, "t2526": {"pct": -70.4}}, "price": {"p2023": 5173.6, "p2024": 5884.87, "p2025": 5884.87, "p2026": 5884.87, "raw2023": "5173.6", "raw2024": "5884.87", "raw2025": "5884.87", "raw2026": "5884.87"}, "cost": {"c2023": 20694.4, "c2024": 111812.53, "c2025": 158891.49, "c2026h1": 23539.48, "total": 314937.9, "rawtotal": "314937.9"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "", "pic": "Nasrun", "drug": "Hydroxocobalamin 5g Inj", "cat": "A*", "quota": "25 sets", "u2023": "4", "u2024": "19", "t2324": "375.00%", "u2025": "27", "t2425": "42.11%", "u2026h1": "4", "t2526": "-70.37%", "usage_total": "54", "p2023": "5173.6", "c2023": "20694.4", "p2024": "5884.87", "c2024": "111812.53", "p2025": "5884.87", "c2025": "158891.49", "p2026": "5884.87", "c2026h1": "23539.48", "cost_total": "314937.9", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "OPEN PUB-IP", "pic": "Iqa", "drug": "Oxycodone 5mg Immediate Release Tab", "cat": "A*", "catKey": "A*", "quota": "OPEN", "usage": {"y2023": 550.0, "y2024": 6403.0, "y2025": 3007.0, "h2026": 9673.0, "total": 19633.0, "raw2023": "550", "raw2024": "6403", "raw2025": "3007", "raw2026": "9673", "rawtotal": "19633"}, "trend": {"t2324": {"pct": 1064.2}, "t2425": {"pct": -53.0}, "t2526": {"pct": 543.4}}, "price": {"p2023": 1.684, "p2024": 1.69, "p2025": 1.68, "p2026": 1.68, "raw2023": "1.684", "raw2024": "1.69", "raw2025": "1.68", "raw2026": "1.68"}, "cost": {"c2023": 926.2, "c2024": 10821.07, "c2025": 5051.76, "c2026h1": 16250.64, "total": 33049.67, "rawtotal": "33049.67"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": [], "raw": {"no": "", "status": "OPEN PUB-IP", "pic": "Iqa", "drug": "Oxycodone 5mg Immediate Release Tab", "cat": "A*", "quota": "OPEN", "u2023": "550", "u2024": "6403", "t2324": "1064.18%", "u2025": "3007", "t2425": "-53.04%", "u2026h1": "9673", "t2526": "543.37%", "usage_total": "19633", "p2023": "1.684", "c2023": "926.2", "p2024": "1.69", "c2024": "10821.07", "p2025": "1.68", "c2025": "5051.76", "p2026": "1.68", "c2026h1": "16250.64", "cost_total": "33049.67", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Nasrun", "drug": "Sodium Nitroprusside 50mg/5ml Inj", "cat": "KPK", "catKey": "OTHER", "quota": "800 vials", "usage": {"y2023": 131.0, "y2024": 244.0, "y2025": 130.0, "h2026": 178.0, "total": 683.0, "raw2023": "131", "raw2024": "244", "raw2025": "130", "raw2026": "178", "rawtotal": "683"}, "trend": {"t2324": {"pct": 86.3}, "t2425": {"pct": -46.7}, "t2526": {"pct": 173.8}}, "price": {"p2023": 18.0, "p2024": 15.0, "p2025": 11.0, "p2026": 11.0, "raw2023": "18", "raw2024": "15", "raw2025": "11", "raw2026": "11"}, "cost": {"c2023": 2358.0, "c2024": 3660.0, "c2025": 1430.0, "c2026h1": 1958.0, "total": 9406.0, "rawtotal": "9406"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "KPK IP-STOK", "pic": "Nasrun", "drug": "Sodium Nitroprusside 50mg/5ml Inj", "cat": "KPK", "quota": "800 vials", "u2023": "131", "u2024": "244", "t2324": "86.26%", "u2025": "130", "t2425": "-46.72%", "u2026h1": "178", "t2526": "173.85%", "usage_total": "683", "p2023": "18", "c2023": "2358", "p2024": "15", "c2024": "3660", "p2025": "11", "c2025": "1430", "p2026": "11", "c2026h1": "1958", "cost_total": "9406", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Nasrun", "drug": "Phenylephrine 10mg/ml Inj", "cat": "KPK", "catKey": "OTHER", "quota": "6000 vials", "usage": {"y2023": 3113.0, "y2024": 3821.0, "y2025": 4106.0, "h2026": 1612.0, "total": 12652.0, "raw2023": "3113", "raw2024": "3821", "raw2025": "4106", "raw2026": "1612", "rawtotal": "12652"}, "trend": {"t2324": {"pct": 22.7}, "t2425": {"pct": 7.5}, "t2526": {"pct": -21.5}}, "price": {"p2023": 1.7, "p2024": 1.59, "p2025": 5.45, "p2026": 30.6, "raw2023": "1.7", "raw2024": "1.59", "raw2025": "5.45", "raw2026": "30.6"}, "cost": {"c2023": 5292.1, "c2024": 6075.39, "c2025": 22377.7, "c2026h1": 49327.2, "total": 83072.39, "rawtotal": "83072.39"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "Nasrun", "drug": "Phenylephrine 10mg/ml Inj", "cat": "KPK", "quota": "6000 vials", "u2023": "3113", "u2024": "3821", "t2324": "22.74%", "u2025": "4106", "t2425": "7.46%", "u2026h1": "1612", "t2526": "-21.48%", "usage_total": "12652", "p2023": "1.7", "c2023": "5292.1", "p2024": "1.59", "c2024": "6075.39", "p2025": "5.45", "c2025": "22377.7", "p2026": "30.6", "c2026h1": "49327.2", "cost_total": "83072.39", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Nasrun", "drug": "Human Fibrinogen", "cat": "KPK", "catKey": "OTHER", "quota": "500 vials", "usage": {"y2023": 0.0, "y2024": 54.0, "y2025": 263.0, "h2026": 75.0, "total": 392.0, "raw2023": "0", "raw2024": "54", "raw2025": "263", "raw2026": "75", "rawtotal": "392"}, "trend": {"t2324": {"err": "#DIV/0!"}, "t2425": {"pct": 387.0}, "t2526": {"pct": -43.0}}, "price": {"p2023": 2100.0, "p2024": 2100.0, "p2025": 2100.0, "p2026": 2100.0, "raw2023": "2100", "raw2024": "2100", "raw2025": "2100", "raw2026": "2100"}, "cost": {"c2023": 0.0, "c2024": 113400.0, "c2025": 552300.0, "c2026h1": 157500.0, "total": 823200.0, "rawtotal": "823200"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "Nasrun", "drug": "Human Fibrinogen", "cat": "KPK", "quota": "500 vials", "u2023": "0", "u2024": "54", "t2324": "#DIV/0!", "u2025": "263", "t2425": "387.04%", "u2026h1": "75", "t2526": "-42.97%", "usage_total": "392", "p2023": "2100", "c2023": "0", "p2024": "2100", "c2024": "113400", "p2025": "2100", "c2025": "552300", "p2026": "2100", "c2026h1": "157500", "cost_total": "823200", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Nasrun", "drug": "Milrinone Lactate 1mg Inj", "cat": "KPK", "catKey": "OTHER", "quota": "4000 vials", "usage": {"y2023": 1257.0, "y2024": 2049.0, "y2025": 2460.0, "h2026": 1916.0, "total": 7682.0, "raw2023": "1257", "raw2024": "2049", "raw2025": "2460", "raw2026": "1916", "rawtotal": "7682"}, "trend": {"t2324": {"pct": 63.0}, "t2425": {"pct": 20.1}, "t2526": {"pct": 55.8}}, "price": {"p2023": 105.34, "p2024": 105.34, "p2025": 105.34, "p2026": 105.34, "raw2023": "105.34", "raw2024": "105.34", "raw2025": "105.34", "raw2026": "105.34"}, "cost": {"c2023": 132412.38, "c2024": 215841.66, "c2025": 259136.4, "c2026h1": 201831.44, "total": 809221.88, "rawtotal": "809221.88"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "Nasrun", "drug": "Milrinone Lactate 1mg Inj", "cat": "KPK", "quota": "4000 vials", "u2023": "1257", "u2024": "2049", "t2324": "63.01%", "u2025": "2460", "t2425": "20.06%", "u2026h1": "1916", "t2526": "55.77%", "usage_total": "7682", "p2023": "105.34", "c2023": "132412.38", "p2024": "105.34", "c2024": "215841.66", "p2025": "105.34", "c2025": "259136.4", "p2026": "105.34", "c2026h1": "201831.44", "cost_total": "809221.88", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}, {"no": "-", "status": "KPK IP-STOK", "pic": "Aisya", "drug": "Levosimendan 12.5mg/5ml", "cat": "KPK", "catKey": "OTHER", "quota": "100 vials", "usage": {"y2023": 12.0, "y2024": 74.0, "y2025": 64.0, "h2026": 73.0, "total": 223.0, "raw2023": "12", "raw2024": "74", "raw2025": "64", "raw2026": "73", "rawtotal": "223"}, "trend": {"t2324": {"pct": 516.7}, "t2425": {"pct": -13.5}, "t2526": {"pct": 128.1}}, "price": {"p2023": 3600.0, "p2024": 3600.0, "p2025": 3600.0, "p2026": 3600.0, "raw2023": "3600", "raw2024": "3600", "raw2025": "3600", "raw2026": "3600"}, "cost": {"c2023": 43200.0, "c2024": 266400.0, "c2025": 230400.0, "c2026h1": 262800.0, "total": 802800.0, "rawtotal": "802800"}, "dosePerPack": 1.0, "appl": {"isAppl": false, "isNon": false, "note": "", "label": "-"}, "gov": {"otherDisc": "", "justLo": "", "remark": ""}, "flags": ["Kategori FUKKM luar biasa: 'KPK'."], "raw": {"no": "", "status": "", "pic": "Aisya", "drug": "Levosimendan 12.5mg/5ml", "cat": "KPK", "quota": "100 vials", "u2023": "12", "u2024": "74", "t2324": "516.67%", "u2025": "64", "t2425": "-13.51%", "u2026h1": "73", "t2526": "128.13%", "usage_total": "223", "p2023": "3600", "c2023": "43200", "p2024": "3600", "c2024": "266400", "p2025": "3600", "c2025": "230400", "p2026": "3600", "c2026h1": "262800", "cost_total": "802800", "appl": "", "nonappl": "", "other_disc": "", "just_lo": "", "remark": "", "doses_per_pack": ""}}]}];
+const LABELS = {"no": "NO", "status": "STATUS", "pic": "PIC (LO)", "drug": "NAMA UBAT", "cat": "KATEGORI FUKKM", "quota": "KUOTA (isi/lulus)", "u2023": "Guna 2023", "u2024": "Guna 2024", "t2324": "Trend 23-24", "u2025": "Guna 2025", "t2425": "Trend 24-25", "u2026h1": "Guna Jan-Jun 2026", "t2526": "Trend 25-26", "usage_total": "Jumlah Guna", "p2023": "Harga/SKU 2023", "c2023": "Kos 2023 (RM)", "p2024": "Harga/SKU 2024", "c2024": "Kos 2024 (RM)", "p2025": "Harga/SKU 2025", "c2025": "Kos 2025 (RM)", "p2026": "Harga/SKU 2026", "c2026h1": "Kos Jan-Jun 2026 (RM)", "cost_total": "Jumlah Kos (RM)", "appl": "APPL", "nonappl": "NON-APPL", "other_disc": "Disiplin Lain Guna?", "just_lo": "Justifikasi LO", "remark": "Catatan", "doses_per_pack": "Dos/Pek (AD)"};
+const STATS = {"departments": 4, "drugs": 85, "cats": {"A*": 39, "OTHER": 39, "A/KK": 7}, "appl": {"APPL": 17, "NON-APPL": 39, "other": 29}, "grandCost": 34318084.514};
+
+const CAT_STYLE = {
+  "A*":  "bg-rose-100 text-rose-700 border-rose-200",
+  "A":   "bg-amber-100 text-amber-700 border-amber-200",
+  "A/KK":"bg-violet-100 text-violet-700 border-violet-200",
+  "B":   "bg-sky-100 text-sky-700 border-sky-200",
+  "C+":  "bg-emerald-100 text-emerald-700 border-emerald-200",
+  "OTHER":"bg-slate-100 text-slate-600 border-slate-200",
+};
+const CAT_ORDER = ["A*","A","A/KK","B","C+","OTHER"];
+
+function esc(s){ return (s==null?"":String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function nl2br(s){ return esc(s).replace(/\n/g,"<br>"); }
+function fmtInt(n){ return n==null?"":Math.round(n).toLocaleString('en-US'); }
+function fmtRM(n){ return n==null?"":"RM "+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtPrice(n){ return n==null?"":n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+// cost per dose runs small for orals (RM0.418) - keep 3 dp below RM1 so cheap items stay distinguishable
+function fmtDose(n){ return n==null?"":n.toLocaleString('en-US',{minimumFractionDigits:n<1?3:2,maximumFractionDigits:n<1?3:2}); }
+
+function trendHTML(t){
+  if(!t || (t.pct==null && !t.err)) return '<span class="text-slate-300">&ndash;</span>';
+  if(t.err) return '<span class="text-slate-400" title="'+esc(t.err)+'">n/a</span>';
+  const p=t.pct;
+  if(p>0)  return '<span class="text-emerald-600 font-medium num">&#9650; '+p.toFixed(1)+'%</span>';
+  if(p<0)  return '<span class="text-rose-600 font-medium num">&#9660; '+p.toFixed(1)+'%</span>';
+  return '<span class="text-slate-500 num">&ndash; 0.0%</span>';
+}
+
+// ---- source-group classifier (PUB / OPEN / KPK) ----
+function statusGroup(s){
+  const u=(s||"").toUpperCase();
+  if(u.includes("OPEN")) return "OPEN";
+  if(u.includes("KPK"))  return "KPK";
+  if(u.includes("PUB"))  return "PUB";
+  return "LAIN";
+}
+
+// ---------------- filter state ----------------
+const state = {
+  q:"",
+  dept:"ALL",
+  cats:new Set(CAT_ORDER),
+  groups:new Set(["PUB","OPEN","KPK","LAIN"]),
+  appl:new Set(["APPL","NON-APPL","other"]),
+};
+
+function applFlag(d){ return d.appl.isAppl?"APPL":(d.appl.isNon?"NON-APPL":"other"); }
+
+function matches(d){
+  if(!state.cats.has(d.catKey)) return false;
+  if(!state.groups.has(statusGroup(d.status))) return false;
+  if(!state.appl.has(applFlag(d))) return false;
+  if(state.q){
+    const hay=[d.drug,d.pic,d.no,d.cat,d.status,d.quota,d.gov.otherDisc,d.gov.justLo,d.gov.remark]
+      .join(" ").toLowerCase();
+    if(!hay.includes(state.q)) return false;
+  }
+  return true;
+}
+
+// ---------------- rendering ----------------
+function statCards(){
+  const c=STATS.cats;
+  const cards=[
+    ["Kepakaran", STATS.departments, "text-sky-700"],
+    ["Jumlah Ubat", STATS.drugs, "text-slate-800"],
+    ["A* (perlu authorisation)", c["A*"]||0, "text-rose-600"],
+    ["A / A/KK", (c["A"]||0)+(c["A/KK"]||0), "text-amber-600"],
+    ["NON-APPL", STATS.appl["NON-APPL"]||0, "text-violet-600"],
+    ["Anggaran Kos Terkumpul", fmtRM(STATS.grandCost), "text-teal-700 !text-lg"],
+  ];
+  document.getElementById('statCards').innerHTML = cards.map(([k,v,cls])=>`
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 px-4 py-3">
+      <div class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold leading-tight">${esc(k)}</div>
+      <div class="text-2xl font-bold mt-1 num ${cls}">${typeof v==='number'?v.toLocaleString('en-US'):v}</div>
+    </div>`).join("");
+}
+
+function buildChips(){
+  const cc=document.getElementById('catChips');
+  cc.innerHTML = CAT_ORDER.filter(k=>(STATS.cats[k]||0)>0).map(k=>{
+    const st=CAT_STYLE[k]||CAT_STYLE.OTHER;
+    return `<button data-cat="${k}" class="chip px-2.5 py-1 rounded-full text-xs font-semibold border ${st}">${esc(k)} <span class="opacity-60">${STATS.cats[k]||0}</span></button>`;
+  }).join("");
+  cc.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.cat;
+    if(state.cats.has(k)){state.cats.delete(k);b.classList.add('chip-off');}
+    else{state.cats.add(k);b.classList.remove('chip-off');}
+    render();
+  });
+
+  const sc=document.getElementById('statusChips');
+  const groups=[["PUB","bg-slate-100 text-slate-700 border-slate-200"],
+                ["OPEN","bg-emerald-100 text-emerald-700 border-emerald-200"],
+                ["KPK","bg-indigo-100 text-indigo-700 border-indigo-200"],
+                ["LAIN","bg-slate-100 text-slate-500 border-slate-200"]];
+  sc.innerHTML = groups.map(([g,st])=>`<button data-grp="${g}" class="chip px-2.5 py-1 rounded-full text-xs font-semibold border ${st}">${g}</button>`).join("");
+  sc.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const g=b.dataset.grp;
+    if(state.groups.has(g)){state.groups.delete(g);b.classList.add('chip-off');}
+    else{state.groups.add(g);b.classList.remove('chip-off');}
+    render();
+  });
+
+  const ac=document.getElementById('applChips');
+  const appls=[["APPL","bg-teal-100 text-teal-700 border-teal-200"],
+               ["NON-APPL","bg-orange-100 text-orange-700 border-orange-200"],
+               ["other","bg-slate-100 text-slate-500 border-slate-200"]];
+  ac.innerHTML = appls.map(([g,st])=>`<button data-appl="${g}" class="chip px-2.5 py-1 rounded-full text-xs font-semibold border ${st}">${g==='other'?'Lain':g}</button>`).join("");
+  ac.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const g=b.dataset.appl;
+    if(state.appl.has(g)){state.appl.delete(g);b.classList.add('chip-off');}
+    else{state.appl.add(g);b.classList.remove('chip-off');}
+    render();
+  });
+}
+
+function deptSelect(){
+  const s=document.getElementById('deptFilter');
+  s.innerHTML='<option value="ALL">Semua kepakaran</option>'+
+    DEPARTMENTS.map((d,i)=>`<option value="${i}">${esc(d.name)} (${d.drugs.length})</option>`).join("");
+  s.onchange=()=>{state.dept=s.value;render();};
+}
+
+function highlight(txt){
+  if(!state.q) return esc(txt);
+  const i=txt.toLowerCase().indexOf(state.q);
+  if(i<0) return esc(txt);
+  return esc(txt.slice(0,i))+'<mark>'+esc(txt.slice(i,i+state.q.length))+'</mark>'+esc(txt.slice(i+state.q.length));
+}
+
+function catBadge(d){
+  const st=CAT_STYLE[d.catKey]||CAT_STYLE.OTHER;
+  return `<span class="inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold border ${st}">${esc(d.cat||"-")}</span>`;
+}
+function applBadge(d){
+  if(d.appl.isAppl) return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-teal-100 text-teal-700">APPL</span>';
+  if(d.appl.isNon)  return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-orange-100 text-orange-700">NON-APPL</span>';
+  if(d.appl.note)   return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-600" title="'+esc(d.appl.note)+'">'+esc(d.appl.note.slice(0,14))+'</span>';
+  return '<span class="text-slate-300">&ndash;</span>';
+}
+
+// Compact number for axis / point labels (full value stays in the tooltip).
+function fmtCompact(n){
+  if(!(typeof n==='number'&&isFinite(n))) return '';
+  const a=Math.abs(n);
+  if(a>=1e6) return (n/1e6).toFixed(a>=1e7?0:1)+'M';
+  if(a>=1e3) return (n/1e3).toFixed(a>=1e4?0:1)+'k';
+  if(a>0 && a<1) return n.toFixed(2);
+  return Math.round(n).toLocaleString('en-US');
+}
+
+// Dependency-free annotated line chart.
+// series: [{name,color,values[],fmt,axis:'left'|'right',primary:bool}] each scaled to its own
+// min/max so different magnitudes (RM total vs RM/unit) stay comparable. The primary series gets
+// y-axis ticks (left), point value labels, and per-segment trend badges; a secondary series gets a
+// right axis + endpoint labels. null / non-numeric values become gaps. Placeholder if no numbers.
+function lineChartSVG(series, opts){
+  const labels=opts.labels, W=680, H=252, padL=66, padR=66, padT=28, padB=50;
+  const plotW=W-padL-padR, plotH=H-padT-padB, n=labels.length;
+  const isNum=v=> typeof v==='number' && isFinite(v);
+  if(!series.some(s=>s.values.some(isNum)))
+    return '<div class="mt-1 text-[11px] italic text-slate-400">Tiada data berangka untuk graf</div>';
+
+  const hasBar = series.some(s=>s.type==='bar');
+  const band=plotW/n;
+  const xAt=i=> hasBar ? (padL+band*(i+0.5)) : (n===1 ? padL+plotW/2 : padL+plotW*i/(n-1));
+  const baseY=padT+plotH;
+
+  series.forEach(s=>{
+    const nums=s.values.filter(isNum);
+    let mn=Math.min(...nums), mx=Math.max(...nums);
+    if(mn===mx){ const pad=Math.abs(mx)||1; mn=mx-pad; mx=mx+pad; }
+    if(mn>0) mn=0;                                   // baseline at zero when all positive
+    s._mn=mn; s._mx=mx;
+    s._y=v=> isNum(v) ? (padT+plotH-plotH*(v-mn)/(mx-mn)) : null;
+  });
+  const primary = series.find(s=>s.primary) || series[0];
+  const rightS  = series.find(s=>s.axis==='right');
+
+  // gridlines + left y-axis ticks (primary)
+  const TICKS=4;
+  let grid='', yl='';
+  for(let g=0; g<=TICKS; g++){
+    const y=padT+plotH*g/TICKS;
+    grid+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#eef2f6" stroke-width="1"/>`;
+    const val=primary._mx-(primary._mx-primary._mn)*g/TICKS;
+    yl+=`<text x="${padL-6}" y="${(y+3).toFixed(1)}" font-size="9" fill="${primary.color}" text-anchor="end">${esc(fmtCompact(val))}</text>`;
+  }
+  // right y-axis ticks (secondary)
+  let yr='';
+  if(rightS){
+    for(let g=0; g<=TICKS; g++){
+      const y=padT+plotH*g/TICKS;
+      const val=rightS._mx-(rightS._mx-rightS._mn)*g/TICKS;
+      yr+=`<text x="${W-padR+6}" y="${(y+3).toFixed(1)}" font-size="9" fill="${rightS.color}" text-anchor="start">${esc(fmtCompact(val))}</text>`;
+    }
+  }
+  // x-axis labels + baseline + axis titles
+  let xlabs=`<line x1="${padL}" y1="${baseY}" x2="${W-padR}" y2="${baseY}" stroke="#cbd5e1" stroke-width="1"/>`;
+  labels.forEach((lb,i)=> xlabs+=`<text x="${xAt(i).toFixed(1)}" y="${(baseY+15).toFixed(1)}" font-size="10" fill="#475569" text-anchor="middle">${lb}</text>`);
+  const cy=(padT+baseY)/2;
+  let titles='';
+  if(opts.xTitle) titles+=`<text x="${padL+plotW/2}" y="${H-5}" font-size="11" font-weight="700" fill="#475569" text-anchor="middle">${esc(opts.xTitle)}</text>`;
+  if(opts.yTitleLeft) titles+=`<text x="14" y="${cy}" font-size="11" font-weight="700" fill="${primary.color}" text-anchor="middle" transform="rotate(-90 14 ${cy})">${esc(opts.yTitleLeft)}</text>`;
+  if(opts.yTitleRight&&rightS) titles+=`<text x="${W-14}" y="${cy}" font-size="11" font-weight="700" fill="${rightS.color}" text-anchor="middle" transform="rotate(90 ${W-14} ${cy})">${esc(opts.yTitleRight)}</text>`;
+
+  // BARS first (behind lines)
+  let bars='';
+  series.filter(s=>s.type==='bar').forEach(s=>{
+    const bw=band*0.55;
+    s.values.forEach((v,i)=>{
+      if(!isNum(v)) return;
+      const yTop=s._y(v), x=xAt(i)-bw/2, h=Math.max(0, baseY-yTop);
+      bars+=`<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${s.color}" opacity="0.82" rx="1"><title>${esc(s.name+': '+(s.fmt?s.fmt(v):v))}</title></rect>`;
+      const lbl='RM '+fmtCompact(v);
+      if(h>=16) bars+=`<text x="${xAt(i).toFixed(1)}" y="${(yTop+h/2+3).toFixed(1)}" font-size="8.5" font-weight="700" fill="#fff" text-anchor="middle">${esc(lbl)}</text>`;
+      else      bars+=`<text x="${xAt(i).toFixed(1)}" y="${(yTop-4).toFixed(1)}" font-size="8.5" font-weight="700" fill="${s.color}" text-anchor="middle">${esc(lbl)}</text>`;
+    });
+  });
+
+  // LINES + markers (+ value labels)
+  let paths='';
+  series.filter(s=>s.type!=='bar').forEach(s=>{
+    let d='', started=false; const pts=[];
+    s.values.forEach((v,i)=>{ const y=s._y(v); if(y==null){ started=false; return; }
+      const x=xAt(i); pts.push([x,y,v,i]); d+=(started?' L':' M')+x.toFixed(1)+' '+y.toFixed(1); started=true; });
+    paths+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const last=pts.length-1;
+    pts.forEach(([x,y,v],k)=>{
+      const tip=s.name+': '+(s.fmt?s.fmt(v):v);
+      paths+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.4" fill="#fff" stroke="${s.color}" stroke-width="2"><title>${esc(tip)}</title></circle>`;
+      const showLabel = s.primary ? true : (k===0 || k===last);   // secondary: endpoints only
+      if(showLabel)
+        paths+=`<text x="${x.toFixed(1)}" y="${(y-9).toFixed(1)}" font-size="9.5" font-weight="700" fill="${s.color}" text-anchor="middle" stroke="#fff" stroke-width="2.6" stroke-linejoin="round" style="paint-order:stroke">${esc(fmtCompact(v))}</text>`;
+    });
+    s._pts=pts;
+  });
+
+  // per-segment trend badges (primary series). If opts.segTrends is supplied (authoritative
+  // spreadsheet trend per segment, e.g. usage which annualizes Jan-Jun 2026) use it so badges
+  // match the table exactly; otherwise compute from the plotted values.
+  let badges='';
+  const p=primary._pts, seg=opts.segTrends;
+  const mkBadge=(pct)=> pct>0 ? ['▲'+pct.toFixed(1)+'%','#059669']
+                       : pct<0 ? ['▼'+Math.abs(pct).toFixed(1)+'%','#e11d48']
+                               : ['→ 0%','#64748b'];
+  for(let k=1;k<p.length;k++){
+    const [x1,y1,v1,i1]=p[k-1], [x2,y2,v2,i2]=p[k];
+    if(i2-i1!==1) continue;                      // only annotate adjacent years
+    const mx=(x1+x2)/2, my=(y1+y2)/2 - 12;
+    let txt, col;
+    if(seg){
+      const t=seg[i1];
+      if(t && t.pct!=null){ [txt,col]=mkBadge(t.pct); }
+      else if(v1===0 && v2>0){ txt='baru'; col='#059669'; }
+      else continue;                             // spreadsheet error (#DIV/0!) -> no badge (table shows n/a)
+    } else if(v1===0){
+      if(v2>0){ txt='baru'; col='#059669'; } else continue;
+    } else { [txt,col]=mkBadge((v2-v1)/Math.abs(v1)*100); }
+    const w=txt.length*5.6+8;
+    badges+=`<g><rect x="${(mx-w/2).toFixed(1)}" y="${(my-8).toFixed(1)}" width="${w.toFixed(1)}" height="14" rx="7" fill="#fff" stroke="${col}" stroke-width="1"/>`+
+            `<text x="${mx.toFixed(1)}" y="${(my+2).toFixed(1)}" font-size="9" font-weight="700" fill="${col}" text-anchor="middle">${txt}</text></g>`;
+  }
+
+  const legend = series.length>1
+    ? '<div class="flex flex-wrap gap-4 mt-1 text-[11px] text-slate-600">'+series.map(s=>`<span class="inline-flex items-center gap-1.5"><span style="width:16px;height:3px;background:${s.color};display:inline-block;border-radius:2px"></span>${esc(s.name)}${s.axis==='right'?' (paksi kanan)':(series.length>1?' (paksi kiri)':'')}</span>`).join('')+'</div>'
+    : '';
+  const caption = opts.caption?`<div class="text-[11px] text-slate-500 mt-0.5">${esc(opts.caption)}</div>`:'';
+  return `<div class="mt-1">
+    <svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" role="img">${grid}${bars}${yl}${yr}${xlabs}${titles}${paths}${badges}</svg>
+    ${legend}${caption}</div>`;
+}
+
+const CHART_LABELS=['2023','2024','2025','Jan-Jun 2026'];
+
+// Scatter/quadrant: unit price (2025) vs usage (2025); bubble size = 2025 spend.
+// Drugs with no 2025 unit price or spend are excluded.
+let SCATTER=null;
+// Both axes are per puff/inhalation: one Symbicort device is 120 puffs, so RM49.60 a device is
+// RM0.413 a puff and 3,410 devices is 409,200 puffs - directly comparable with a tablet's unit
+// price and tablet count. An inhaler with no puff count is left out rather than plotted as if the
+// device were a single puff; SKIPPED_NO_PUFF counts those for the caption.
+let SKIPPED_NO_PUFF=0;
+function scatterPoints(){
+  if(SCATTER) return SCATTER;
+  SCATTER=[];
+  DEPARTMENTS.forEach(dep=>dep.drugs.forEach(d=>{
+    const u=d.usage.y2025, p=d.price.p2025, s=d.cost.c2025, k=d.dosePerPack;
+    if(!(typeof u==='number'&&isFinite(u)&&typeof p==='number'&&isFinite(p)&&p>0
+         &&typeof s==='number'&&isFinite(s)&&s>0)) return;
+    if(!(typeof k==='number'&&isFinite(k)&&k>0)){ SKIPPED_NO_PUFF++; return; }
+    SCATTER.push({x:u*k, y:p/k, size:s, perPack:k, sku:u, label:d.drug, key:d.no+'|'+d.drug});
+  }));
+  return SCATTER;
+}
+function scatterTip(p){
+  return p.label+' — Guna 2025: '+fmtInt(p.sku)+' SKU'
+       + (p.perPack>1 ? ' ('+fmtInt(p.x)+' puff, '+fmtInt(p.perPack)+' puff/peranti); Harga/puff: RM '+fmtDose(p.y)
+                      : '; Harga/unit: RM '+fmtDose(p.y))
+       + '; Belanja 2025: '+fmtRM(p.size);
+}
+function scatterSVG(currentKey){
+  const pts=scatterPoints();
+  if(pts.length<2) return '<div class="mt-1 text-[11px] italic text-slate-400">Tiada data mencukupi untuk plot serakan</div>';
+  const W=680,H=252,padL=64,padR=18,padT=22,padB=50;
+  const plotW=W-padL-padR, plotH=H-padT-padB, baseY=padT+plotH;
+  const med=arr=>{const a=[...arr].sort((p,q)=>p-q);const m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2;};
+  const medX=med(pts.map(p=>p.x)), medY=med(pts.map(p=>p.y));
+  // Rank-based positions so the median lands exactly at the plot centre (cross in the middle).
+  const N=pts.length;
+  [...pts].sort((a,b)=>a.x-b.x).forEach((p,i)=>p._xf=(i+0.5)/N);
+  [...pts].sort((a,b)=>a.y-b.y).forEach((p,i)=>p._yf=(i+0.5)/N);
+  const X=p=>padL+plotW*p._xf, Y=p=>baseY-plotH*p._yf;
+  // bubble radius: area ~ 2025 spend (larger scale so high-cost items stand out)
+  const maxSize=Math.max(...pts.map(p=>p.size))||1;
+  const R=s=>Math.max(2.5, 18*Math.sqrt((s>0?s:0)/maxSize));
+  // axis frame + Rendah/Tinggi direction hints (dots ranked low->high, not a linear scale)
+  let axis=`<line x1="${padL}" y1="${baseY}" x2="${W-padR}" y2="${baseY}" stroke="#cbd5e1"/><line x1="${padL}" y1="${padT}" x2="${padL}" y2="${baseY}" stroke="#cbd5e1"/>`;
+  axis+=`<text x="${padL+4}" y="${(baseY+14).toFixed(1)}" font-size="9.5" fill="#64748b" text-anchor="start">Rendah</text>`+
+        `<text x="${W-padR}" y="${(baseY+14).toFixed(1)}" font-size="9.5" fill="#64748b" text-anchor="end">Tinggi</text>`+
+        `<text x="${padL-5}" y="${baseY.toFixed(1)}" font-size="9.5" fill="#64748b" text-anchor="end">Rendah</text>`+
+        `<text x="${padL-5}" y="${(padT+7).toFixed(1)}" font-size="9.5" fill="#64748b" text-anchor="end">Tinggi</text>`;
+  // MEDIAN guide lines fixed at the centre -> forms a cross (drawn behind the bubbles)
+  const vx=padL+plotW*0.5, hy=baseY-plotH*0.5;
+  // danger-zone tint: Volume Tinggi + Harga Tinggi (top-right) gets a light red wash (drawn first)
+  const quadTint=`<rect x="${vx.toFixed(1)}" y="${padT}" width="${(W-padR-vx).toFixed(1)}" height="${(hy-padT).toFixed(1)}" fill="#fef2f2" opacity="0.85"/>`;
+  const guideLines=`<line x1="${vx.toFixed(1)}" y1="${padT}" x2="${vx.toFixed(1)}" y2="${baseY}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>`+
+               `<line x1="${padL}" y1="${hy.toFixed(1)}" x2="${W-padR}" y2="${hy.toFixed(1)}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3" opacity="0.8"/>`;
+  // text labels drawn ON TOP of the bubbles, each with a white halo so they stay readable
+  const halo='stroke="#fff" stroke-width="3.2" stroke-linejoin="round" style="paint-order:stroke"';
+  const lt=(x,y,anchor,size,fill,t)=>`<text x="${x}" y="${y}" font-size="${size}" font-weight="700" fill="${fill}" text-anchor="${anchor}" ${halo}>${t}</text>`;
+  const labelsTop=
+    lt((vx+3).toFixed(1),(padT+9).toFixed(1),'start',9.5,'#475569','Median: '+fmtInt(medX)+' SKU')+
+    lt((W-padR).toFixed(1),(hy-3).toFixed(1),'end',9.5,'#475569','Median: RM '+fmtDose(medY))+
+    lt(padL+4,baseY-5,'start',11,'#334155','Volume Rendah + Harga Rendah')+
+    lt(W-padR-2,baseY-5,'end',11,'#334155','Volume Tinggi + Harga Rendah')+
+    lt(padL+4,padT+9,'start',11,'#334155','Volume Rendah + Harga Tinggi')+
+    lt(W-padR-2,padT+9,'end',11,'#9f1239','Volume Tinggi + Harga Tinggi');
+  // bubbles (others first, biggest behind; current on top)
+  let dots='', cur=null;
+  [...pts].sort((a,b)=>b.size-a.size).forEach(p=>{
+    if(p.key===currentKey){ cur=p; return; }
+    const r=R(p.size);
+    dots+=`<circle cx="${X(p).toFixed(1)}" cy="${Y(p).toFixed(1)}" r="${r.toFixed(1)}" fill="#475569" fill-opacity="0.38" stroke="#334155" stroke-opacity="0.6" stroke-width="0.6"><title>${esc(scatterTip(p))}</title></circle>`;
+  });
+  if(cur){ const r=R(cur.size), cxv=X(cur).toFixed(1), cyv=Y(cur).toFixed(1);
+    // outer ring = constant offset so the current drug is findable even when its bubble is small;
+    // the filled bubble keeps its TRUE spend-scaled size.
+    dots+=`<circle cx="${cxv}" cy="${cyv}" r="${(r+3.5).toFixed(1)}" fill="none" stroke="#e11d48" stroke-width="1.4" opacity="0.9"/>`
+         +`<circle cx="${cxv}" cy="${cyv}" r="${r.toFixed(1)}" fill="#e11d48" fill-opacity="0.85" stroke="#fff" stroke-width="1.1"><title>${esc(scatterTip(cur))}</title></circle>`; }
+  // axis titles
+  const titles=`<text x="${padL+plotW/2}" y="${H-5}" font-size="12" font-weight="700" fill="#475569" text-anchor="middle">Guna 2025 (SKU)</text>`+
+               `<text x="13" y="${(padT+baseY)/2}" font-size="12" font-weight="700" fill="#475569" text-anchor="middle" transform="rotate(-90 13 ${(padT+baseY)/2})">Harga Seunit / Puff 2025 (RM)</text>`;
+  const note=cur?'':'<div class="text-[11px] text-slate-500 mt-0.5">Ubat ini tiada harga/belanja 2025 &mdash; tidak diplot (titik merah tidak dipaparkan).</div>';
+  // Shown only on an inhaler/device panel - a tablet's price needed no adjustment, so the note
+  // would just be noise there.
+  const puffNote=(cur&&cur.perPack>1)?`<div class="text-[11px] text-slate-600 mt-1.5 border-l-2 border-amber-400 pl-2 bg-amber-50/60 py-1 rounded-r">
+      <b>Nota penyesuaian puff:</b> bagi inhaler/peranti, harga dan guna telah diselaraskan mengikut lajur <b>DOSES PER PACK</b> dalam sheet.
+      Kedudukan titik dikira per <b>puff/inhalation</b> &mdash; bukan per peranti.
+      Contoh: Symbicort RM49.60/peranti &divide; 120 puff = <b>RM0.413/puff</b>; 3,410 peranti &times; 120 = <b>409,200 puff</b>.
+    </div>`:'';
+  return `<div class="mt-1">
+    <svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" role="img">${quadTint}${axis}${guideLines}${dots}${labelsTop}${titles}</svg>
+    <div class="text-[11px] text-slate-500 mt-0.5">Setiap titik = satu ubat CARDIOLOGY (${pts.length} ubat). Paksi disusun ikut pangkat (rendah&rarr;tinggi); <b>saiz bulatan = belanja 2025</b>. Garis putus = median (guna &asymp; ${esc(fmtInt(medX))} SKU; harga &asymp; RM ${esc(fmtDose(medY))}). Titik merah = ubat semasa.${SKIPPED_NO_PUFF?` ${SKIPPED_NO_PUFF} inhaler tanpa data puff/peranti tidak dipaparkan.`:''}</div>
+    ${puffNote}${note}</div>`;
+}
+
+// 1F: was the 2024->2025 cost change driven by price or by volume?
+// Bennet (mid-point) decomposition of Delta(p*u): priceEff + volEff sums exactly to the p*u delta.
+function costDecomp(d){
+  const p24=d.price.p2024, p25=d.price.p2025, u24=d.usage.y2024, u25=d.usage.y2025;
+  const ok=v=>typeof v==='number'&&isFinite(v);
+  if(!ok(p24)||!ok(p25)||!ok(u24)||!ok(u25)) return '';
+  const priceEff=(p25-p24)*(u24+u25)/2, volEff=(u25-u24)*(p24+p25)/2, delta=priceEff+volEff;
+  const ap=Math.abs(priceEff), av=Math.abs(volEff);
+  if(ap<1&&av<1) return '';                       // no material change
+  const sgn=v=>(v>=0?'+':'-')+fmtRM(Math.abs(v));
+  const driver = (Math.min(ap,av)/Math.max(ap,av)>0.8) ? 'kedua-dua (volum &amp; harga)'
+               : (av>ap ? 'volum' : 'harga');
+  return `<div class="mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600 leading-relaxed">
+      Perubahan kos 2024&rarr;2025: <b>${sgn(delta)}</b> &mdash; didorong oleh <b>${driver}</b>
+      <span class="text-slate-400">(kesan volum ${sgn(volEff)}; kesan harga ${sgn(priceEff)}; berdasarkan harga &times; guna)</span>
+    </div>`;
+}
+// small up/down marker when the unit price moved vs the previous year
+function priceDelta(cur,prev){
+  const ok=v=>typeof v==='number'&&isFinite(v);
+  if(!ok(cur)||!ok(prev)||cur===prev) return '';
+  return cur>prev ? ' <span class="text-rose-600 text-[10px]" title="Harga naik">&#9650;</span>'
+                  : ' <span class="text-emerald-600 text-[10px]" title="Harga turun">&#9660;</span>';
+}
+
+function subPanel(d){
+  // Combo chart: Volume (SKU) line on the left axis + Jumlah Kos (RM) bars on the right axis.
+  const trendChart = lineChartSVG(
+    [{name:'Guna (SKU)', type:'line', color:'#0284c7', primary:true, axis:'left',
+      values:[d.usage.y2023,d.usage.y2024,d.usage.y2025,d.usage.h2026], fmt:fmtInt},
+     {name:'Jumlah Kos (RM)', type:'bar', color:'#0d9488', axis:'right',
+      values:[d.cost.c2023,d.cost.c2024,d.cost.c2025,d.cost.c2026h1], fmt:fmtRM}],
+    {labels:CHART_LABELS, segTrends:[d.trend.t2324,d.trend.t2425,d.trend.t2526],
+     xTitle:'Tahun', yTitleLeft:'Volume (SKU)', yTitleRight:'Jumlah Kos (RM)',
+     caption:'2026 = separuh tahun (Jan-Jun). Garis = Volume (paksi kiri), bar = Jumlah Kos (paksi kanan). Badge = trend penggunaan.'});
+  // Scatter/quadrant: this drug (red) vs all drugs in this discipline, spend vs usage 2025.
+  const scatterChart = scatterSVG(d.no+'|'+d.drug);
+  const vol=`
+    <div class="pillar-card p-3">
+      <div class="text-[11px] uppercase tracking-wide font-bold text-sky-700 mb-2">Kriteria Penilaian 1 &middot; Volume (SKU)</div>
+      <table class="w-full text-xs">
+        <thead><tr class="text-slate-400 text-left">
+          <th class="py-1">2023</th><th>2024</th><th class="text-center">&#8594;</th><th>2025</th>
+          <th class="text-center">&#8594;</th><th>Jan&ndash;Jun 2026</th><th class="text-center">&#8594;</th><th class="text-right">Jumlah</th>
+        </tr></thead>
+        <tbody><tr class="num">
+          <td class="py-1">${d.usage.y2023!=null?fmtInt(d.usage.y2023):esc(d.usage.raw2023)}</td>
+          <td>${d.usage.y2024!=null?fmtInt(d.usage.y2024):esc(d.usage.raw2024)}</td>
+          <td class="text-center">${trendHTML(d.trend.t2324)}</td>
+          <td>${d.usage.y2025!=null?fmtInt(d.usage.y2025):esc(d.usage.raw2025)}</td>
+          <td class="text-center">${trendHTML(d.trend.t2425)}</td>
+          <td>${d.usage.h2026!=null?fmtInt(d.usage.h2026):esc(d.usage.raw2026)}</td>
+          <td class="text-center">${trendHTML(d.trend.t2526)}</td>
+          <td class="text-right font-semibold">${d.usage.total!=null?fmtInt(d.usage.total):esc(d.usage.rawtotal)}</td>
+        </tr></tbody>
+      </table>
+    </div>`;
+
+  // Pillar 2 - Cost
+  const cost=`
+    <div class="pillar-card p-3">
+      <div class="text-[11px] uppercase tracking-wide font-bold text-teal-700 mb-2">Kriteria Penilaian 2 &middot; Kos &amp; Harga</div>
+      <table class="w-full text-xs">
+        <thead><tr class="text-slate-400 text-left">
+          <th class="py-1">Tahun</th><th class="text-right">Harga/SKU (RM)</th><th class="text-right">Jumlah Kos (RM)</th>
+        </tr></thead>
+        <tbody class="num">
+          <tr><td class="py-0.5">2023</td><td class="text-right">${fmtPrice(d.price.p2023)||esc(d.price.raw2023)}</td><td class="text-right">${fmtRM(d.cost.c2023)}</td></tr>
+          <tr><td class="py-0.5">2024</td><td class="text-right">${fmtPrice(d.price.p2024)||esc(d.price.raw2024)}${priceDelta(d.price.p2024,d.price.p2023)}</td><td class="text-right">${fmtRM(d.cost.c2024)}</td></tr>
+          <tr><td class="py-0.5">2025</td><td class="text-right">${fmtPrice(d.price.p2025)||esc(d.price.raw2025)}${priceDelta(d.price.p2025,d.price.p2024)}</td><td class="text-right">${fmtRM(d.cost.c2025)}</td></tr>
+          <tr><td class="py-0.5">Jan&ndash;Jun 2026</td><td class="text-right">${fmtPrice(d.price.p2026)||esc(d.price.raw2026)}${priceDelta(d.price.p2026,d.price.p2025)}</td><td class="text-right">${fmtRM(d.cost.c2026h1)}</td></tr>
+          <tr class="border-t border-slate-200 font-semibold"><td class="py-1">Jumlah</td><td></td><td class="text-right">${d.cost.total!=null?fmtRM(d.cost.total):esc(d.cost.rawtotal)}</td></tr>
+        </tbody>
+      </table>
+      ${costDecomp(d)}
+      <div class="mt-2 text-xs">Status: ${applBadge(d)}</div>
+    </div>`;
+
+  // Pillar 3 - Governance
+  const gov=`
+    <div class="pillar-card p-3">
+      <div class="text-[11px] uppercase tracking-wide font-bold text-violet-700 mb-2">Kriteria Penilaian 3 &middot; Tadbir Urus / Nota</div>
+      <dl class="text-xs space-y-1.5">
+        <div class="flex gap-2"><dt class="w-28 shrink-0 text-slate-400">Kategori FUKKM</dt><dd>${catBadge(d)}</dd></div>
+        <div class="flex gap-2"><dt class="w-28 shrink-0 text-slate-400">Kuota</dt><dd>${esc(d.quota)||'<span class="text-slate-300">&ndash;</span>'}</dd></div>
+        <div class="flex gap-2"><dt class="w-28 shrink-0 text-slate-400">Disiplin lain</dt><dd>${nl2br(d.gov.otherDisc)||'<span class="text-slate-300">&ndash;</span>'}</dd></div>
+        <div class="flex gap-2"><dt class="w-28 shrink-0 text-slate-400">Justifikasi LO</dt><dd>${nl2br(d.gov.justLo)||'<span class="text-slate-300">&ndash;</span>'}</dd></div>
+        <div class="flex gap-2"><dt class="w-28 shrink-0 text-slate-400">Catatan</dt><dd>${nl2br(d.gov.remark)||'<span class="text-slate-300">&ndash;</span>'}</dd></div>
+      </dl>
+    </div>`;
+
+  // Full raw dump (lossless) - every column B..AC
+  const rawRows = Object.keys(LABELS).map(k=>{
+    const v=d.raw[k];
+    if(v==null||v==="") return "";
+    return `<tr><td class="py-0.5 pr-3 text-slate-400 whitespace-nowrap">${esc(LABELS[k])}</td><td class="py-0.5">${nl2br(v)}</td></tr>`;
+  }).join("");
+
+  const flags = d.flags.length ? `
+    <div class="md:col-span-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+      &#9888; ${d.flags.map(esc).join("<br>&#9888; ")}
+    </div>` : "";
+
+  return `
+    <div class="bg-slate-50/70 border-t border-slate-200 px-4 py-4">
+      <div class="grid md:grid-cols-3 gap-3">${vol}${cost}${gov}${flags}</div>
+      <div class="chart-grid">
+        <div class="pillar-card p-4">
+          <div class="chart-title text-slate-700">Trend Volume (SKU) &amp; Jumlah Kos (RM)</div>
+          ${trendChart}
+        </div>
+        <div class="pillar-card p-4">
+          <div class="chart-title text-slate-700">Harga Seunit vs Guna (2025) &mdash; Kuadran &middot; saiz = belanja</div>
+          ${scatterChart}
+        </div>
+      </div>
+      <details class="mt-3">
+        <summary class="text-xs text-slate-500 hover:text-slate-700 select-none">&#9660; Semua medan mentah (lossless, lajur B&ndash;AC)</summary>
+        <table class="w-full text-xs mt-2 bg-white rounded-lg border border-slate-200 p-2"><tbody>${rawRows}</tbody></table>
+      </details>
+    </div>`;
+}
+
+function drugRow(d, gi, di){
+  const flag = d.flags.length ? ' <span title="Isu kualiti data" class="text-amber-500">&#9888;</span>' : '';
+  return `
+    <tbody class="border-b border-slate-100">
+      <tr class="drow cursor-pointer">
+        <td class="px-3 py-2 text-slate-400 num text-xs">${esc(d.no)}</td>
+        <td class="px-2 py-2 text-xs text-slate-500 whitespace-nowrap">${esc(d.status)}</td>
+        <td class="px-2 py-2 text-xs text-slate-500 whitespace-nowrap">${highlight(d.pic)}</td>
+        <td class="px-3 py-2 text-sm font-medium text-slate-800">${highlight(d.drug)}${flag}</td>
+        <td class="px-2 py-2">${catBadge(d)}</td>
+        <td class="px-2 py-2 text-xs num whitespace-nowrap">${esc(d.quota)||'<span class="text-slate-300">&ndash;</span>'}</td>
+        <td class="px-2 py-2 text-right text-sm num">${d.usage.y2025!=null?fmtInt(d.usage.y2025):esc(d.usage.raw2025)}</td>
+        <td class="px-2 py-2 text-right text-sm num">${d.usage.h2026!=null?fmtInt(d.usage.h2026):esc(d.usage.raw2026)}</td>
+        <td class="px-2 py-2 text-right text-sm">${trendHTML(d.trend.t2526)}</td>
+        <td class="px-2 py-2 text-right text-sm num">${fmtPrice(d.price.p2026)||esc(d.price.raw2026)}</td>
+        <td class="px-2 py-2 text-center">${applBadge(d)}</td>
+        <td class="px-2 py-2 text-right text-sm num font-semibold text-slate-700">${d.cost.total!=null?fmtRM(d.cost.total):''}</td>
+        <td class="px-2 py-2 text-slate-300 text-center toggle">&#9656;</td>
+      </tr>
+      <tr class="expand hidden" data-g="${gi}" data-d="${di}"><td colspan="13" class="p-0"></td></tr>
+    </tbody>`;
+}
+
+function deptSection(dep, gi){
+  const rows = dep.drugs.map((d,di)=> matches(d) ? drugRow(d, gi, di) : "").filter(Boolean);
+  if(!rows.length) return "";
+  const shown = rows.length, total = dep.drugs.length;
+  return `
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="px-5 py-3 bg-slate-800 text-white flex items-center justify-between">
+        <h2 class="font-semibold tracking-tight">${esc(dep.name)}</h2>
+        <span class="text-xs text-slate-300">${shown} / ${total} ubat</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr class="text-[11px] uppercase tracking-wide text-slate-500 bg-slate-50 border-b border-slate-200">
+              <th class="px-3 py-2 text-left font-semibold">No</th>
+              <th class="px-2 py-2 text-left font-semibold">Sumber</th>
+              <th class="px-2 py-2 text-left font-semibold">PIC</th>
+              <th class="px-3 py-2 text-left font-semibold">Nama Ubat</th>
+              <th class="px-2 py-2 text-left font-semibold">Kat</th>
+              <th class="px-2 py-2 text-left font-semibold">Kuota</th>
+              <th class="px-2 py-2 text-right font-semibold">Guna 2025</th>
+              <th class="px-2 py-2 text-right font-semibold">Jan&ndash;Jun 26</th>
+              <th class="px-2 py-2 text-right font-semibold">Trend 25&rarr;26</th>
+              <th class="px-2 py-2 text-right font-semibold">Harga 26</th>
+              <th class="px-2 py-2 text-center font-semibold">APPL</th>
+              <th class="px-2 py-2 text-right font-semibold">Jumlah Kos</th>
+              <th class="px-2 py-2"></th>
+            </tr>
+          </thead>
+          ${rows.join("")}
+        </table>
+      </div>
+    </section>`;
+}
+
+// ---- lazy sub-panel rendering: build subPanel (and its charts) only on first expand ----
+function panelDrug(ex){ return DEPARTMENTS[+ex.dataset.g].drugs[+ex.dataset.d]; }
+function ensureRendered(ex){
+  if(!ex.dataset.done){ ex.querySelector('td').innerHTML = subPanel(panelDrug(ex)); ex.dataset.done='1'; }
+}
+let openRow=null;                                  // accordion: only one drug open at a time
+function openPanel(tr){
+  if(openRow && openRow!==tr) closePanel(openRow);  // auto-collapse the previously open row
+  const ex=tr.parentElement.querySelector('.expand');
+  ensureRendered(ex);
+  ex.classList.remove('hidden');
+  const t=tr.querySelector('.toggle'); if(t) t.innerHTML='&#9662;';
+  openRow=tr;
+}
+function closePanel(tr){
+  const ex=tr.parentElement.querySelector('.expand');
+  ex.classList.add('hidden');
+  const t=tr.querySelector('.toggle'); if(t) t.innerHTML='&#9656;';
+  if(openRow===tr) openRow=null;
+}
+
+function render(){
+  const list = state.dept==="ALL" ? DEPARTMENTS.map((d,i)=>[d,i]) : [[DEPARTMENTS[+state.dept], +state.dept]];
+  const html = list.map(([d,i])=>deptSection(d,i)).filter(Boolean).join("");
+  const el=document.getElementById('content');
+  el.innerHTML = html || `<div class="text-center text-slate-400 py-16">Tiada ubat sepadan dengan penapis semasa.</div>`;
+  el.querySelectorAll('tr.drow').forEach(tr=>{
+    tr.onclick=()=>{
+      const ex=tr.parentElement.querySelector('.expand');
+      if(ex.classList.contains('hidden')) openPanel(tr); else closePanel(tr);
+    };
+  });
+}
+
+document.getElementById('search').addEventListener('input',e=>{state.q=e.target.value.trim().toLowerCase();render();});
+document.getElementById('collapseAll').onclick=()=>document.querySelectorAll('tr.drow').forEach(closePanel);
+
+// ---------------- Full combined table (ABC) ----------------
+const shortDept=n=>String(n||'').replace(/^.*\(/,'').replace(/\)$/,'');
+let FULL=null;
+function buildFull(){
+  if(FULL) return FULL;
+  FULL=DEPARTMENTS.flatMap(dep=>dep.drugs.map(d=>Object.assign({}, d, {dept:dep.name})));
+  return FULL;
+}
+// ABC cost = sum of the selected year range; recomputed whenever the slider moves.
+const YKEYS=['c2023','c2024','c2025','c2026h1'], YLABS=['2023','2024','2025','Jan-Jun 2026'];
+let yrFrom=2, yrTo=2;                                  // default: 2025 - 2025
+function yrRangeLabel(){ return yrFrom===yrTo ? YLABS[yrFrom] : YLABS[yrFrom]+'–'+YLABS[yrTo]; }
+function computeKos(){
+  const rows=buildFull();
+  rows.forEach(d=>{ let s=0; for(let i=yrFrom;i<=yrTo;i++){ const v=d.cost[YKEYS[i]]; if(typeof v==='number'&&isFinite(v)) s+=v; } d._kos=s; });
+  const total=rows.reduce((a,d)=>a+d._kos,0);
+  [...rows].sort((a,b)=>b._kos-a._kos).reduce((run,d)=>{run+=d._kos; d._cum=total?run/total*100:0; return run;},0);
+  // ABC class from cumulative cost share (pharmacy: A <=70%, B <=90%, C otherwise)
+  rows.forEach(d=>d._abc = d._cum<=70?'A':(d._cum<=90?'B':'C'));
+}
+function abcBg(k){ return k==='A'?'bg-rose-100 text-rose-800':k==='B'?'bg-amber-100 text-amber-800':'bg-emerald-100 text-emerald-800'; }
+const FCOLS=[
+  {key:'no',   label:'#',               type:'index', align:'text-left'},
+  {key:'dept', label:'Kepakaran',       type:'text', align:'text-left',   get:d=>shortDept(d.dept),        fmt:d=>`<span class="text-xs text-slate-500">${esc(shortDept(d.dept))}</span>`},
+  {key:'drug', label:'Nama Ubat',       type:'text', align:'text-left',   get:d=>d.drug,                   fmt:d=>`<span class="font-medium text-slate-800">${esc(d.drug)}</span>`},
+  {key:'cat',  label:'Kat',             type:'text', align:'text-left',   get:d=>d.catKey,                 fmt:d=>catBadge(d)},
+  {key:'pic',  label:'PIC',             type:'text', align:'text-left',   get:d=>d.pic,                    fmt:d=>`<span class="text-xs text-slate-500">${esc(d.pic)}</span>`},
+  {key:'u25',  label:'Guna 2025',       type:'num',  align:'text-right',  get:d=>d.usage.y2025,            fmt:d=>d.usage.y2025!=null?fmtInt(d.usage.y2025):'<span class="text-slate-300">&ndash;</span>'},
+  {key:'appl', label:'APPL',            type:'text', align:'text-center', get:d=>d.appl.label,             fmt:d=>applBadge(d)},
+  {key:'kos',  label:'Jumlah Kos (RM)', type:'num',  align:'text-right',  get:d=>d._kos,                   fmt:d=>`<span class="font-semibold text-slate-700">${fmtRM(d._kos)}</span>`},
+  {key:'cum',  label:'Kumulatif % Kos', type:'num',  align:'text-right',  get:d=>d._cum,                   fmt:d=>`<span class="num text-slate-600">${d._cum.toFixed(1)}%</span>`},
+  {key:'abc',  label:'Kelas ABC',       type:'text', align:'text-center', get:d=>d._abc},
+];
+let sortState={key:'kos', dir:'desc'};
+// rows for the current year range + sort order (shared by the table render and the CSV export)
+function currentRows(){
+  computeKos();
+  const rows=buildFull().slice();
+  const col=FCOLS.find(c=>c.key===sortState.key);
+  rows.sort((a,b)=>{
+    let va=col.get(a), vb=col.get(b);
+    if(col.type==='num'){ va=(typeof va==='number'&&isFinite(va))?va:-Infinity; vb=(typeof vb==='number'&&isFinite(vb))?vb:-Infinity; return va-vb; }
+    va=(va==null?'':String(va)).toLowerCase(); vb=(vb==null?'':String(vb)).toLowerCase(); return va<vb?-1:(va>vb?1:0);
+  });
+  if(sortState.dir==='desc') rows.reverse();
+  return rows;
+}
+function renderFullTable(){
+  const rows=currentRows();
+  const thead='<thead><tr class="text-[11px] uppercase text-slate-500 border-b border-slate-200">'+
+    FCOLS.map(c=>{
+      if(c.type==='index') return `<th class="px-2 py-2 ${c.align} font-semibold whitespace-nowrap text-slate-400">${esc(c.label)}</th>`;
+      const a=sortState.key===c.key; const ar=a?(sortState.dir==='desc'?' &#9660;':' &#9650;'):'';
+      const lbl=c.key==='kos' ? ('Kos '+yrRangeLabel()+' (RM)') : c.label;
+      return `<th data-k="${c.key}" class="px-2 py-2 ${c.align} font-semibold cursor-pointer select-none hover:text-slate-800 whitespace-nowrap ${a?'text-sky-700':''}">${esc(lbl)}${ar}</th>`;}).join('')+'</tr></thead>';
+  const tbody='<tbody>'+rows.map((d,i)=>'<tr class="border-b border-slate-100 hover:bg-slate-50">'+
+    FCOLS.map(c=> c.type==='index'
+      ? `<td class="px-2 py-1.5 ${c.align} num text-slate-400">${i+1}</td>`
+      : c.key==='abc'
+      ? `<td class="px-2 py-1.5 text-center font-bold ${abcBg(d._abc)}">${d._abc}</td>`
+      : `<td class="px-2 py-1.5 ${c.align} ${c.type==='num'?'num':''}">${c.fmt(d)}</td>`).join('')+'</tr>').join('')+'</tbody>';
+  const t=document.getElementById('fullTable'); t.innerHTML=thead+tbody;
+  t.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k;
+    if(sortState.key===k) sortState.dir=(sortState.dir==='desc'?'asc':'desc');
+    else { sortState.key=k; sortState.dir=(FCOLS.find(c=>c.key===k).type==='num')?'desc':'asc'; }
+    renderFullTable();
+  });
+  document.getElementById('fullTableCount').textContent=rows.length+' ubat';
+}
+function showView(which){
+  const dept=which==='dept';
+  document.getElementById('view-dept').classList.toggle('hidden',!dept);
+  document.getElementById('view-table').classList.toggle('hidden',dept);
+  document.getElementById('tab-dept').classList.toggle('tab-active',dept);
+  document.getElementById('tab-table').classList.toggle('tab-active',!dept);
+  if(!dept) renderFullTable();
+}
+document.getElementById('tab-dept').onclick=()=>showView('dept');
+document.getElementById('tab-table').onclick=()=>showView('table');
+
+// ---- ABC year-range slider ----
+(function(){
+  const fromEl=document.getElementById('yrFrom'), toEl=document.getElementById('yrTo'), out=document.getElementById('yrReadout');
+  function apply(){ yrFrom=+fromEl.value; yrTo=+toEl.value; out.textContent=yrRangeLabel(); renderFullTable(); }
+  fromEl.addEventListener('input',()=>{ if(+fromEl.value>+toEl.value) toEl.value=fromEl.value; apply(); });
+  toEl.addEventListener('input',()=>{ if(+toEl.value<+fromEl.value) fromEl.value=toEl.value; apply(); });
+  out.textContent=yrRangeLabel();          // initialise readout (default 2025)
+})();
+
+// ---- ABC table CSV export (current year range + sort order) ----
+function exportCsv(){
+  const rows=currentRows();
+  const q=v=>{ v=(v==null?'':String(v)); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  const head=FCOLS.map(c=>c.key==='kos' ? 'Kos '+yrRangeLabel()+' (RM)' : c.label);
+  const lines=[head.map(q).join(',')];
+  rows.forEach((d,i)=>{
+    lines.push(FCOLS.map(c=>{
+      if(c.type==='index') return i+1;
+      let v=c.get(d);
+      if(c.key==='kos') v=(typeof v==='number'&&isFinite(v))?v.toFixed(2):'';
+      if(c.key==='cum') v=(typeof v==='number'&&isFinite(v))?v.toFixed(1):'';
+      return q(v);
+    }).join(','));
+  });
+  // UTF-8 BOM so Excel opens the file with correct encoding
+  const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='abc_analisis_cardiology_'+yrRangeLabel().replace(/[^0-9A-Za-z-]+/g,'_')+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+document.getElementById('exportCsv').onclick=exportCsv;
+
+statCards(); buildChips(); deptSelect(); render(); showView('dept');
+</script>
+</body>
+</html>
