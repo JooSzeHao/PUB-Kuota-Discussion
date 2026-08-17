@@ -63,7 +63,7 @@ tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter','system-ui',
       <div class="text-right text-xs text-sky-100 leading-relaxed">
         <div>Sumber: <span class="font-semibold">Google Sheet (langsung)</span></div>
         <div>Data guna 2023&ndash;2025 + Jan&ndash;Jun 2026</div>
-        <div>Dijana (snapshot): 17/08/2026 21:25</div>
+        <div>Dijana (snapshot): 17/08/2026 21:33</div>
         <div class="no-print mt-2 flex gap-2 justify-end">
           <a href="index.html" class="text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 font-semibold text-white">&larr; Semua disiplin</a>
           <button onclick="window.print()" class="text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 font-semibold text-white">&#128424;&#65039; Cetak / PDF</button>
@@ -727,7 +727,7 @@ function deptSection(dep, gi){
 // does in the Kepakaran view, where it sits in a two-column grid.
 function abcPanel(d){
   return `<div class="bg-slate-50/70 border-t border-slate-200 px-4 py-4">
-      <div class="pillar-card p-4 max-w-2xl">
+      <div class="pillar-card p-4 max-w-3xl mx-auto">
         <div class="chart-title text-slate-700">Harga Seunit vs Guna (2025) &mdash; Kuadran &middot; saiz = belanja</div>
         ${scatterSVG(d.no+'|'+d.drug)}
       </div>
