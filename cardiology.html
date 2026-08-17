@@ -63,7 +63,7 @@ tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter','system-ui',
       <div class="text-right text-xs text-sky-100 leading-relaxed">
         <div>Sumber: <span class="font-semibold">Google Sheet (langsung)</span></div>
         <div>Data guna 2023&ndash;2025 + Jan&ndash;Jun 2026</div>
-        <div>Dijana (snapshot): 14/08/2026 11:37</div>
+        <div>Dijana (snapshot): 17/08/2026 21:25</div>
         <div class="no-print mt-2 flex gap-2 justify-end">
           <a href="index.html" class="text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 font-semibold text-white">&larr; Semua disiplin</a>
           <button onclick="window.print()" class="text-xs px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 font-semibold text-white">&#128424;&#65039; Cetak / PDF</button>
@@ -721,10 +721,27 @@ function deptSection(dep, gi){
     </section>`;
 }
 
-// ---- lazy sub-panel rendering: build subPanel (and its charts) only on first expand ----
+// ABC tab panel: the quadrant chart on its own, no pillar tables or raw dump.
+// The SVG is width:100% over a 680px viewBox, and this table spans the full 1500px page, so the
+// card is capped near the chart's natural width - otherwise it renders at over twice the size it
+// does in the Kepakaran view, where it sits in a two-column grid.
+function abcPanel(d){
+  return `<div class="bg-slate-50/70 border-t border-slate-200 px-4 py-4">
+      <div class="pillar-card p-4 max-w-2xl">
+        <div class="chart-title text-slate-700">Harga Seunit vs Guna (2025) &mdash; Kuadran &middot; saiz = belanja</div>
+        ${scatterSVG(d.no+'|'+d.drug)}
+      </div>
+    </div>`;
+}
+
+// ---- lazy sub-panel rendering: build the panel (and its charts) only on first expand ----
 function panelDrug(ex){ return DEPARTMENTS[+ex.dataset.g].drugs[+ex.dataset.d]; }
 function ensureRendered(ex){
-  if(!ex.dataset.done){ ex.querySelector('td').innerHTML = subPanel(panelDrug(ex)); ex.dataset.done='1'; }
+  if(!ex.dataset.done){
+    const d=panelDrug(ex);
+    ex.querySelector('td').innerHTML = (ex.dataset.panel==='abc') ? abcPanel(d) : subPanel(d);
+    ex.dataset.done='1';
+  }
 }
 let openRow=null;                                  // accordion: only one drug open at a time
 function openPanel(tr){
@@ -760,10 +777,13 @@ document.getElementById('collapseAll').onclick=()=>document.querySelectorAll('tr
 
 // ---------------- Full combined table (ABC) ----------------
 const shortDept=n=>String(n||'').replace(/^.*\(/,'').replace(/\)$/,'');
+// Set for the departments that asked for the ABC rows to unfold their quadrant chart.
+const ABC_EXPAND = true;
 let FULL=null;
 function buildFull(){
   if(FULL) return FULL;
-  FULL=DEPARTMENTS.flatMap(dep=>dep.drugs.map(d=>Object.assign({}, d, {dept:dep.name})));
+  // _g/_d keep each copy pointing back at DEPARTMENTS[g].drugs[d], which is what panelDrug() needs.
+  FULL=DEPARTMENTS.flatMap((dep,g)=>dep.drugs.map((d,i)=>Object.assign({}, d, {dept:dep.name, _g:g, _d:i})));
   return FULL;
 }
 // ABC cost = sum of the selected year range; recomputed whenever the slider moves.
@@ -813,13 +833,28 @@ function renderFullTable(){
       const a=sortState.key===c.key; const ar=a?(sortState.dir==='desc'?' &#9660;':' &#9650;'):'';
       const lbl=c.key==='kos' ? ('Kos '+yrRangeLabel()+' (RM)') : c.label;
       return `<th data-k="${c.key}" class="px-2 py-2 ${c.align} font-semibold cursor-pointer select-none hover:text-slate-800 whitespace-nowrap ${a?'text-sky-700':''}">${esc(lbl)}${ar}</th>`;}).join('')+'</tr></thead>';
-  const tbody='<tbody>'+rows.map((d,i)=>'<tr class="border-b border-slate-100 hover:bg-slate-50">'+
-    FCOLS.map(c=> c.type==='index'
-      ? `<td class="px-2 py-1.5 ${c.align} num text-slate-400">${i+1}</td>`
+  const cells=(d,i)=>FCOLS.map(c=> c.type==='index'
+      ? `<td class="px-2 py-1.5 ${c.align} num text-slate-400">${ABC_EXPAND?'<span class="toggle">&#9656;</span> ':''}${i+1}</td>`
       : c.key==='abc'
       ? `<td class="px-2 py-1.5 text-center font-bold ${abcBg(d._abc)}">${d._abc}</td>`
-      : `<td class="px-2 py-1.5 ${c.align} ${c.type==='num'?'num':''}">${c.fmt(d)}</td>`).join('')+'</tr>').join('')+'</tbody>';
-  const t=document.getElementById('fullTable'); t.innerHTML=thead+tbody;
+      : `<td class="px-2 py-1.5 ${c.align} ${c.type==='num'?'num':''}">${c.fmt(d)}</td>`).join('');
+  // One tbody per drug when rows are expandable, so openPanel/closePanel find the .expand sibling
+  // exactly as they do in the Kepakaran view. Otherwise the markup stays a single plain tbody.
+  const tbody = ABC_EXPAND
+    ? rows.map((d,i)=>`<tbody class="border-b border-slate-100">`
+        +`<tr class="drow cursor-pointer hover:bg-slate-50">${cells(d,i)}</tr>`
+        +`<tr class="expand hidden" data-g="${d._g}" data-d="${d._d}" data-panel="abc"><td colspan="${FCOLS.length}" class="p-0"></td></tr>`
+        +`</tbody>`).join('')
+    : '<tbody>'+rows.map((d,i)=>`<tr class="border-b border-slate-100 hover:bg-slate-50">${cells(d,i)}</tr>`).join('')+'</tbody>';
+  const t=document.getElementById('fullTable');
+  openRow=null;                       // sorting rebuilds the table; drop the stale accordion handle
+  t.innerHTML=thead+tbody;
+  if(ABC_EXPAND) t.querySelectorAll('tr.drow').forEach(tr=>{
+    tr.onclick=()=>{
+      const ex=tr.parentElement.querySelector('.expand');
+      if(ex.classList.contains('hidden')) openPanel(tr); else closePanel(tr);
+    };
+  });
   t.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{
     const k=th.dataset.k;
     if(sortState.key===k) sortState.dir=(sortState.dir==='desc'?'asc':'desc');
